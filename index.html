@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>光的冒险 · Light Adventure</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+  background:radial-gradient(ellipse at 50% 30%,#10173a 0%,#050816 60%,#02040c 100%);
+  color:#eaf0ff;user-select:none;-webkit-user-select:none;touch-action:manipulation;
+}
+.hidden{display:none !important;}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ---------- 顶部栏 ---------- */
+#topbar{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(10,16,40,.85);
+  border-bottom:1px solid rgba(120,160,255,.25);z-index:5;flex-wrap:wrap;}
+#topTitle{font-size:16px;font-weight:700;color:#ffe08a;flex:1;min-width:120px;text-shadow:0 0 8px rgba(255,210,100,.6);}
+.tbtn{border:1px solid rgba(140,180,255,.5);background:rgba(30,45,90,.7);color:#dfe9ff;border-radius:12px;
+  padding:7px 12px;font-size:14px;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.tbtn:active{transform:scale(.94);}
+.tbtn.glow{background:linear-gradient(135deg,#ffcf5c,#ff9d3c);color:#3a2200;font-weight:700;border:none;
+  box-shadow:0 0 14px rgba(255,190,80,.7);animation:pulse 1.6s infinite;}
+.tbtn:disabled{opacity:.4;animation:none;}
+@keyframes pulse{0%,100%{box-shadow:0 0 8px rgba(255,190,80,.5);}50%{box-shadow:0 0 20px rgba(255,190,80,.95);}}
+
+/* ---------- 画布 ---------- */
+#canvasWrap{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0;}
+#cv{background:transparent;border-radius:10px;touch-action:none;max-width:100%;max-height:100%;}
+
+/* ---------- 底部操作栏 ---------- */
+#actionbar{display:flex;gap:10px;justify-content:center;align-items:center;padding:8px 10px 12px;flex-wrap:wrap;}
+#levelInfo{font-size:13px;color:#9fb4e8;width:100%;text-align:center;min-height:18px;}
+
+/* ---------- 地图 ---------- */
+#scrMap{background:
+  radial-gradient(1px 1px at 12% 22%,#fff8,transparent),
+  radial-gradient(1px 1px at 68% 12%,#fff6,transparent),
+  radial-gradient(2px 2px at 85% 40%,#ffd16688,transparent),
+  radial-gradient(1px 1px at 30% 70%,#fff5,transparent),
+  radial-gradient(2px 2px at 50% 88%,#8ecae677,transparent),
+  radial-gradient(ellipse at 50% 20%,#131c48 0%,#050816 70%);
+  overflow-y:auto;padding:14px;}
+#mapHead{text-align:center;margin:6px 0 4px;}
+#mapHead h1{font-size:26px;color:#ffe08a;text-shadow:0 0 16px rgba(255,210,100,.8);letter-spacing:2px;}
+#mapHead p{font-size:13px;color:#9fb4e8;margin-top:4px;}
+#mapGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:900px;margin:12px auto 30px;width:100%;}
+.wcard{background:rgba(20,30,66,.75);border:1px solid rgba(120,160,255,.3);border-radius:16px;padding:12px;
+  text-align:center;position:relative;transition:.2s;}
+.wcard.locked{opacity:.45;filter:grayscale(.7);}
+.wcard .lh{font-size:40px;line-height:1.2;filter:drop-shadow(0 0 2px #000);}
+.wcard.lit .lh{filter:drop-shadow(0 0 14px gold);}
+.wcard h3{font-size:15px;color:#ffe9b0;margin:4px 0 2px;}
+.wcard .wsub{font-size:11px;color:#93a7dd;margin-bottom:8px;}
+.lvbtn{display:inline-block;margin:3px;padding:6px 9px;border-radius:10px;border:1px solid rgba(140,180,255,.4);
+  background:rgba(35,50,100,.8);color:#dfe9ff;font-size:13px;cursor:pointer;min-width:44px;}
+.lvbtn.done{border-color:#ffd166;color:#ffd166;}
+.lvbtn.lock{opacity:.35;pointer-events:none;}
+#mapBtns{text-align:center;padding-bottom:24px;}
+#mapBtns .tbtn{margin:4px;font-size:15px;padding:10px 18px;}
+
+/* ---------- 图鉴 ---------- */
+#scrJournal{background:rgba(5,8,22,.97);overflow-y:auto;padding:14px;z-index:20;}
+#journalGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;max-width:960px;margin:10px auto;width:100%;}
+.jcard{background:linear-gradient(160deg,#1b2752,#101a3d);border:1px solid rgba(255,210,120,.4);border-radius:14px;padding:10px;min-height:150px;}
+.jcard .ji{font-size:30px;text-align:center;filter:drop-shadow(0 0 8px rgba(255,220,150,.6));}
+.jcard h4{font-size:13px;color:#ffe08a;text-align:center;margin:6px 0 4px;}
+.jcard p{font-size:11.5px;color:#c8d6f8;line-height:1.55;}
+.jcard.lock{filter:grayscale(1);opacity:.4;}
+.jcard.lock p{visibility:hidden;}
+
+/* ---------- 弹窗 ---------- */
+#modalLayer{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,4,12,.72);z-index:50;padding:16px;}
+#modalLayer.show{display:flex;}
+.modal{background:linear-gradient(165deg,#1a2450,#0d1430);border:1px solid rgba(255,210,120,.5);border-radius:20px;
+  max-width:440px;width:100%;padding:22px 20px;text-align:center;box-shadow:0 0 40px rgba(80,120,255,.35);max-height:88vh;overflow-y:auto;}
+.modal h2{color:#ffe08a;font-size:20px;margin-bottom:8px;text-shadow:0 0 10px rgba(255,210,100,.6);}
+.modal p{font-size:14.5px;line-height:1.7;color:#dce6ff;margin:8px 0;}
+.modal .stars{font-size:34px;letter-spacing:6px;margin:6px 0;filter:drop-shadow(0 0 8px gold);}
+.optBtn{display:block;width:100%;margin:10px 0;padding:13px;border-radius:14px;font-size:16px;cursor:pointer;
+  border:1px solid rgba(140,180,255,.5);background:rgba(40,60,120,.8);color:#eaf0ff;font-family:inherit;}
+.optBtn:active{transform:scale(.97);}
+.optBtn.right{background:linear-gradient(135deg,#3ddc84,#1fa35a);border:none;font-weight:700;}
+.optBtn.wrong{background:linear-gradient(135deg,#ff6b6b,#c92a2a);border:none;font-weight:700;}
+.cardShow{background:linear-gradient(160deg,#232f63,#121c44);border:1px solid rgba(255,210,120,.6);border-radius:14px;
+  padding:12px;margin:10px 0;}
+.cardShow .ji{font-size:36px;}
+.cardShow h4{color:#ffe08a;margin:6px 0;}
+.cardShow p{font-size:13px;color:#c8d6f8;}
+#toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(20,30,66,.95);
+  border:1px solid rgba(255,210,120,.6);color:#ffe9b0;padding:10px 20px;border-radius:14px;font-size:14px;
+  z-index:99;display:none;max-width:88vw;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+.hintTag{display:inline-block;background:#2a3a78;border-radius:8px;padding:2px 8px;font-size:12px;color:#9fd0ff;margin-bottom:6px;}
+
+/* ---------- 序章 ---------- */
+#scrPrologue{background:radial-gradient(ellipse at 50% 30%,#1a2450 0%,#0a0f28 60%,#04060f 100%);z-index:30;
+  align-items:center;justify-content:center;text-align:center;padding:24px;}
+#proCard{max-width:520px;width:100%;}
+#proEmoji{font-size:64px;filter:drop-shadow(0 0 18px rgba(255,220,130,.8));animation:floaty 2.4s ease-in-out infinite;}
+#proText{font-size:16.5px;line-height:1.9;color:#eaf0ff;margin:22px 0;min-height:120px;}
+#proText b{color:#ffe08a;}
+#proDots{margin:10px 0 18px;font-size:13px;color:#9fb4e8;letter-spacing:4px;}
+@keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+
+/* ---------- 结局 ---------- */
+#scrEnding{background:radial-gradient(ellipse at 50% 18%,#3a2f10 0%,#141b3e 45%,#050816 100%);z-index:31;
+  overflow-y:auto;padding:20px;text-align:center;}
+#scrEnding h1{font-size:26px;color:#ffe08a;text-shadow:0 0 20px rgba(255,210,100,.9);margin:8px 0;}
+#endRecap{max-width:560px;margin:14px auto;text-align:left;background:rgba(15,22,52,.8);
+  border:1px solid rgba(255,210,120,.4);border-radius:16px;padding:14px 18px;}
+#endRecap li{font-size:13.5px;color:#dce6ff;line-height:1.8;margin:4px 0;list-style:none;}
+#endRecap li b{color:#ffd166;}
+#endSouyang{max-width:560px;margin:10px auto;font-size:14px;line-height:2;color:#c8ffd8;}
+
+/* ---------- 卷轴收集动画 ---------- */
+@keyframes cardPop{0%{transform:scale(.2) rotate(-12deg);opacity:0;}60%{transform:scale(1.12) rotate(3deg);opacity:1;}100%{transform:scale(1) rotate(0);}}
+.cardShow{animation:cardPop .7s cubic-bezier(.2,1.4,.4,1);}
+.scrollTag{display:inline-block;background:linear-gradient(135deg,#8a5a1e,#c98a2e);color:#fff4d6;
+  border-radius:8px;padding:2px 10px;font-size:12px;margin-bottom:8px;box-shadow:0 0 10px rgba(255,190,80,.5);}
+
+/* ---------- 塔状态 ---------- */
+.wcard .tstate{font-size:11px;margin:2px 0 6px;padding:2px 8px;border-radius:8px;display:inline-block;}
+.tstate.off{background:#1a1f38;color:#7c89b8;}
+.tstate.dim{background:#3a3050;color:#ffd98a;}
+.tstate.on{background:#4a3a10;color:#ffe08a;box-shadow:0 0 10px rgba(255,190,80,.5);}
+#starBar{width:220px;height:10px;background:#1a2246;border-radius:6px;margin:8px auto 0;overflow:hidden;border:1px solid rgba(140,180,255,.3);}
+#starFill{height:100%;background:linear-gradient(90deg,#ffcf5c,#ffe08a);width:0%;transition:width .5s;}
+#starTxt{font-size:12px;color:#ffd166;margin-top:4px;}
+.spark{ display:inline-block; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 世界地图 -->
+  <div id="scrMap" class="screen">
+    <div id="mapHead">
+      <h1>✨ 光的冒险 ✨</h1>
+      <p>光之国的「太阳棱镜」被暗影迷雾侵蚀而熄灭，七座灯塔接连黯淡……<br>光之学徒，和光之精灵「闪闪」一起，逐塔重燃光明吧！</p>
+      <div id="starBar"><div id="starFill"></div></div>
+      <div id="starTxt"></div>
+    </div>
+    <div id="mapGrid"></div>
+    <div id="mapBtns">
+      <button class="tbtn" id="btnOpenJournal">📜 光之卷轴</button>
+      <button class="tbtn hidden" id="btnSandbox">🧪 自由实验室</button>
+      <button class="tbtn" id="btnReset">🗑️ 重置进度</button>
+    </div>
+  </div>
+
+  <!-- 游戏画面 -->
+  <div id="scrGame" class="screen hidden">
+    <div id="topbar">
+      <button class="tbtn" id="btnBack">🗺️ 地图</button>
+      <div id="topTitle"></div>
+      <button class="tbtn" id="btnHint">💡 提示</button>
+      <button class="tbtn" id="btnDemo" disabled>🎬 光路演示</button>
+    </div>
+    <div id="canvasWrap"><canvas id="cv" width="900" height="600"></canvas></div>
+    <div id="actionbar">
+      <div id="levelInfo"></div>
+      <button class="tbtn glow" id="btnFire">🔦 发射光束</button>
+    </div>
+  </div>
+
+  <!-- 图鉴 -->
+  <div id="scrJournal" class="screen hidden">
+    <div id="topbar">
+      <button class="tbtn" id="btnJournalBack">⬅️ 返回</button>
+      <div id="topTitle2" style="font-size:16px;font-weight:700;color:#ffe08a;flex:1;">📜 光之卷轴 <span id="scrollProg" style="font-size:12px;color:#9fb4e8"></span></div>
+    </div>
+    <div id="journalGrid"></div>
+  </div>
+  <!-- 序章 -->
+  <div id="scrPrologue" class="screen hidden">
+    <div id="proCard">
+      <div id="proEmoji">✨</div>
+      <div id="proText"></div>
+      <div id="proDots"></div>
+      <button class="tbtn glow" id="btnProNext" style="font-size:16px;padding:12px 30px;">下一页 ▶</button>
+      <div style="margin-top:14px;"><button class="tbtn" id="btnProSkip">跳过序章 ⏩</button></div>
+    </div>
+  </div>
+
+  <!-- 结局 -->
+  <div id="scrEnding" class="screen hidden">
+    <h1>☀️ 太阳棱镜重燃！</h1>
+    <p style="font-size:15px;color:#ffe9b0;line-height:1.9;">七座灯塔齐亮，暗影迷雾如潮水般退去……<br>光之国的每一寸土地，都重新洒满了光。</p>
+    <div id="endRecap"></div>
+    <div id="endSouyang">🏅 你已获得科学核心素养：<br>
+      <b>科学观念</b> —— 掌握了光的传播规律　<b>科学思维</b> —— 学会预测与推理<br>
+      <b>探究实践</b> —— 亲手完成每一次实验　<b>态度责任</b> —— 懂得安全用光、实事求是</div>
+    <p style="color:#9fd0ff;font-size:13px;margin:10px 0;">🧪 已解锁【自由实验室】——去地图里随便玩光吧！</p>
+    <button class="tbtn glow" id="btnEndMap" style="font-size:16px;padding:12px 30px;">🗺️ 回到七塔地图</button>
+  </div>
+</div>
+<div id="modalLayer"></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* =====================================================
+ * 《光的冒险》 Light Adventure
+ * 教科版五上《光》单元教学游戏 · 单文件 · Canvas 2D
+ * ===================================================== */
+const W=900,H=600,DEG=Math.PI/180;
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const dist=(x1,y1,x2,y2)=>Math.hypot(x2-x1,y2-y1);
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+/* ---------- 存档 ---------- */
+const SAVE_KEY="lightAdventureSaveV1";
+let SAVE={done:{},stars:{},cards:{},fails:{},allDone:false,prologueSeen:false};
+try{const s=localStorage.getItem(SAVE_KEY);if(s)SAVE=Object.assign(SAVE,JSON.parse(s));}catch(e){}
+SAVE.done=SAVE.done||{};SAVE.stars=SAVE.stars||{};SAVE.cards=SAVE.cards||{};SAVE.fails=SAVE.fails||{};
+/* 老存档兼容：已有通关记录的玩家自动跳过序章 */
+if(!SAVE.prologueSeen&&Object.keys(SAVE.done).length>0)SAVE.prologueSeen=true;
+function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));}catch(e){}}
+
+/* ---------- 音效（WebAudio 小喇叭） ---------- */
+let AC=null;
+function beep(f,d=0.12,type="sine",vol=0.12){
+  try{
+    if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==="suspended")AC.resume();
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.type=type;o.frequency.value=f;g.gain.value=vol;
+    g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);
+  }catch(e){}
+}
+const sndOK=()=>{beep(660,.12);setTimeout(()=>beep(880,.15),110);setTimeout(()=>beep(1320,.2),230);};
+const sndNo=()=>beep(160,.25,"sawtooth",0.08);
+const sndPop=()=>beep(520,.07,"triangle",0.1);
+
+/* ---------- 提示条 ---------- */
+let toastTimer=null;
+function toast(msg,ms=2200){
+  const t=$("toast");t.innerHTML=msg;t.style.display="block";
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display="none",ms);
+}
+
+/* ---------- 星空背景 ---------- */
+const STARS=[];for(let i=0;i<90;i++)STARS.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.6+0.4,p:Math.random()*6});
+
+/* ================= 世界与关卡数据 ================= */
+const WORLDS=[
+ {name:"微光觉醒",tower:"微光塔",blurb:"找到真正的光源，点亮第一缕光",sub:"什么是光源",icon:"🕯️",color:"#ffd166"},
+ {name:"直线之道",tower:"直线塔",blurb:"光只会直直地飞，小孔对齐才放行",sub:"光沿直线传播",icon:"📏",color:"#8ecae6"},
+ {name:"影之试炼",tower:"影之塔",blurb:"透明与不透明之间，藏着影子的秘密",sub:"阻挡与影子",icon:"🌑",color:"#cdb4db"},
+ {name:"水之折射",tower:"水之塔",blurb:"光钻进水里会拐弯，别被眼睛骗了",sub:"光在水中拐弯",icon:"🐟",color:"#48cae4"},
+ {name:"彩虹棱镜",tower:"彩虹塔",blurb:"白光里藏着彩虹，三原色能合成白光",sub:"色散与三原色",icon:"🌈",color:"#ff8fa3"},
+ {name:"镜像回廊",tower:"镜像塔",blurb:"镜面反弹光，角度里藏着规矩",sub:"光的反射",icon:"🪞",color:"#90e0a8"},
+ {name:"潜望之眼",tower:"棱镜塔",blurb:"太阳棱镜沉眠于此，最终决战之地",sub:"潜望镜·总决战",icon:"🔭",color:"#f4a261"},
+];
+
+/* kind 说明:
+ findsrc=找光源  darkroom=照亮房间  eyereveal=光入眼
+ boards=孔板直线  bellcorner=声音彩蛋  matslot=材料选择
+ eclipse=日食月食  fish=折射叉鱼  prismcrystal=棱镜分光
+ wheel=三色转盘  mirrors=反射镜  periscope=潜望镜  finale=综合Boss */
+const LEVELS=[
+/* ============ W1 微光觉醒 ============ */
+{id:"w1l1",w:0,k:0,name:"谁真的在发光",kind:"findsrc",
+ storyIntro:"呜……太阳棱镜熄灭后，光之国黑得伸手不见五指！我叫<b>闪闪</b>，是你的光之精灵✨。想点亮第一座「微光塔」，得先找到<b>真正的光源</b>——就是那些自己正在发光的物体！",
+ storyOut:"太棒了！原来月亮和镜子都不算光源，它们只是「借光发亮」。微光塔亮起了一点！可是光有灯还不够——黑漆漆的塔里连门都找不到，下一关跟我去小黑屋探险！",
+ intro:"影域一片漆黑！点击那些【自己正在发光】的物体，找到真正的光源吧！",
+ predict:{q:"猜一猜：月亮是光源吗？",o:["是，它亮亮的","不是，它反射太阳的光"],a:1,
+   why:"对啦！月亮自己不发光，它只是把太阳光反射到我们眼里。"},
+ hints:["会自己发光、而且正在发光的物体才叫光源哦。","找找看：会飞的小虫子、天上的大火球、通着电的灯。","点击萤火虫、太阳和点亮的电灯！"],
+ card:{i:"✨",t:"什么是光源",
+   x:"像太阳、萤火虫、点亮的电灯这样，<b>自己能够发光、并且正在发光</b>的物体叫作光源。月亮、镜子只是反射别人的光，不是光源。"},
+ data:{objs:[
+   {x:180,y:200,e:"🐝",label:"萤火虫",src:true,msg:"萤火虫的尾巴会自己发光，它是光源！"},
+   {x:450,y:140,e:"🌞",label:"太阳",src:true,msg:"太阳自己不停地发光发热，是最大的光源！"},
+   {x:720,y:210,e:"💡",label:"点亮的电灯",src:true,msg:"通上电、正在发光的电灯是光源！"},
+   {x:250,y:420,e:"🌙",label:"月亮",src:false,msg:"月亮自己不发光，它反射的是太阳光，不是光源。"},
+   {x:520,y:430,e:"🪞",label:"镜子",src:false,msg:"镜子只会反光，自己不发光，不是光源。"},
+   {x:740,y:420,e:"🔦",label:"没打开的手电",src:false,msg:"没点亮的手电不在发光，现在它不是光源。"}]}},
+
+{id:"w1l2",w:0,k:1,name:"点亮小黑屋",kind:"darkroom",
+ storyIntro:"微光塔里堆满杂物，出口大门藏起来了！拖着小灯笼找找看——记住：<b>有光，才看得见</b>。",
+ storyOut:"找到出口啦！没有光，我们什么都看不见。咦，塔顶有只沉睡的「观察之眼」……传说把光送进眼睛里，就能看见藏起来的星星！",
+ intro:"拖着小灯在黑暗的房间里找一找：出口大门藏在哪里？找到后点击大门！",
+ predict:{q:"在漆黑的房间里，想找到出口最需要什么？",o:["一面镜子","一个真正的光源","一副夜视望远镜"],a:1,
+   why:"没错！没有光源，黑暗中我们什么都看不见。"},
+ hints:["拖着灯慢慢找，光圈照亮的地方就能看清楚。","出口在房间的右侧区域哦。","把灯拖到右下角附近，大门就会发光，点击它！"],
+ card:{i:"🏠",t:"有光才看得见",
+   x:"没有光源，黑暗中我们什么也看不见；光把周围照亮，我们才能看清这个世界。"},
+ data:{door:{x:760,y:430}}},
+
+{id:"w1l3",w:0,k:2,name:"眼睛的秘密",kind:"eyereveal",
+ storyIntro:"这就是微光塔的塔心！把光射进观察之眼👁️——<b>光进了眼睛，我们才能真正「看见」</b>！",
+ storyOut:"微光塔重燃！原来「看见」的秘密是光跑进眼睛。可闪闪发现：前面的路立起了好多带孔的挡板——光被挡住就过不去了吗？去「直线塔」看看吧！",
+ intro:"转动手电筒，把光射进【观察之眼】👁️——光进入眼睛，我们才能看见藏起来的星星！",
+ predict:{q:"我们之所以能看见物体，是因为……",o:["物体发出或反射的光进入了眼睛","眼睛自己会发光照到物体","物体在黑暗里会自己变亮"],a:0,
+   why:"对！眼睛不会发光，是光跑进眼睛，我们才看得见。"},
+ bossQ:{q:"夜晚我们能看见月亮，是因为……？",o:["月亮自己发的光跑进眼睛","太阳照到月亮的光反射进我们的眼睛","眼睛发出光照亮了月亮"],a:1,
+   why:"对！月亮不是光源，是它反射的太阳光进入了我们的眼睛，我们才看见它。"},
+ hints:["拖动火把旁边的小圆把手，可以转动光照方向。","把光束对准上方那只大眼睛👁️。","射中眼睛后，三颗星星会出现，把它们点掉！"],
+ card:{i:"👁️",t:"光进入眼睛",
+   x:"我们能看见物体，是因为物体<b>发出或反射的光进入了我们的眼睛</b>。没有光进入眼睛，再美的东西也看不见。"},
+ data:{eye:{x:620,y:180},stars:[{x:260,y:150},{x:480,y:320},{x:730,y:380}]}},
+
+/* ============ W2 直线之道 ============ */
+{id:"w2l1",w:1,k:0,name:"卡纸小孔实验",kind:"boards",
+ storyIntro:"直线塔的通道被卡纸挡板封住了！听说<b>光是直直往前飞的</b>——把挡板的小孔排成一条直线，光就能穿过去！",
+ storyOut:"成功！小孔对齐成直线，光就一直冲过去啦。前面挡板变多了，而且……下方好像有个眼睛禁区，激光千万不能射眼睛！",
+ intro:"拖动两块带孔挡板，让小孔对准成一条直线，光就能穿过去点亮星星！",
+ predict:{q:"猜一猜：光会怎样穿过小孔？",o:["沿直线穿过对齐的小孔","拐个弯绕过挡板"],a:0,
+   why:"对啦！光沿直线传播，只有小孔排成直线，光才过得去。"},
+ hints:["上下拖动挡板，让小孔排成一条直线。","光是沿直线飞的，把孔都对准星星的高度。","把两块挡板都拖到中间高度（对准光源和星星）！"],
+ card:{i:"📏",t:"光沿直线传播",
+   x:"光在同种均匀的介质中<b>沿直线传播</b>。这就是教材里的卡纸实验：几张卡纸的小孔排成一条直线，光才能一直穿过去。"},
+ data:{src:{x:70,y:300,a:0},boards:[{x:360,sol:300},{x:600,sol:300}],
+   star:{x:835,y:300,r:26,need:0.9},eyes:[]}},
+
+{id:"w2l2",w:1,k:1,name:"三孔一线·小心眼睛",kind:"boards",
+ storyIntro:"三块挡板！对准星星就能开门，但千万别让光射进下方的👁️禁区——<b>激光笔直射眼睛超危险</b>！",
+ storyOut:"漂亮！三孔一线，光直直地飞过去了。嘘——拐角后面有只小鸟在睡觉，光拐不了弯，该怎么叫醒它呢？",
+ intro:"三块挡板！对准星星可以过关；对准👁️眼睛图标可就糟了——激光笔的光不能射眼睛！",
+ predict:{q:"如果小孔没有对齐成直线，光会怎么样？",o:["被挡板挡住，过不去","从缝里挤过去","拐个弯绕过去"],a:0,
+   why:"正确！光不会绕弯，孔没对齐就会被挡住。"},
+ hints:["三块板都要对齐到同一条直线上。","星星在上方，眼睛在下方——瞄准星星的高度！","把三块挡板都拖到星星的高度（上方）。"],
+ card:{i:"🧪",t:"小孔对齐光才过",
+   x:"实验发现：只有所有小孔<b>排成一条直线</b>，光才能依次穿过；只要错开一点，光就被挡住了——证明光沿直线传播。⚠️激光笔的光千万不能照射眼睛！"},
+ data:{src:{x:70,y:240,a:0},boards:[{x:320,sol:240},{x:470,sol:240},{x:620,sol:240}],
+   star:{x:835,y:240,r:26,need:0.9},eyes:[{x:835,y:390,r:24}]}},
+
+{id:"w2l3",w:1,k:2,name:"拐角后的小鸟",kind:"bellcorner",
+ storyIntro:"小鸟在拐角后面睡得正香！光沿直线走，拐不了弯……动动脑筋：<b>还有什么能绕过墙角？</b>",
+ storyOut:"直线塔重燃！声音能绕弯，光却只会走直线。下一站「影之塔」——听说那里的路被透明墙、磨砂墙和木板挡住了，光还过得去吗？",
+ intro:"小鸟在拐角后面睡着了！先用手电试试……再想想还有什么办法能叫醒它？",
+ predict:{q:"光能拐过墙角照到小鸟吗？",o:["能，光很厉害的","不能，光只会走直线","能，只要光足够亮"],a:1,
+   why:"对！光沿直线传播，拐不了弯。但声音可以绕过拐角！"},
+ bossQ:{q:"为什么我们能听见隔壁教室的铃声，却看不见隔壁的人？",o:["声音能绕过拐角，光只能沿直线传播","光跑得太快所以迷路了","墙壁专门挡光、不挡声音"],a:0,
+   why:"对！声音向四面八方传播能绕过障碍，光沿直线传播被墙挡住了。"},
+ hints:["先点手电试试，观察光在哪里停下了。","光拐不了弯……还有什么能绕过去？听——","点击铃铛🔔，铃声可以绕过拐角叫醒小鸟！"],
+ card:{i:"🔔",t:"光直行·声绕弯",
+   x:"光沿直线传播，<b>不能绕过拐角</b>；而声音向四面八方传播，可以绕过障碍物。所以我们能听见隔壁的铃声，却看不见隔壁的人。"},
+ data:{}},
+
+/* ============ W3 影之试炼 ============ */
+{id:"w3l1",w:2,k:0,name:"神奇的三块板",kind:"matslot",
+ storyIntro:"影之塔的光路中间有个方框！玻璃片、磨砂片、木板，还有沉甸甸的石板——<b>选错材料，光就到不了星星</b>！好好挑哦。",
+ storyOut:"选对啦！透明材料让光全速通过，石板和木板都是「捣蛋鬼」。前面有两道关卡框，星星还很挑食——光太暗它可不亮！",
+ intro:"把材料拖进光路中的方框：玻璃片、磨砂片、木板，谁能让光顺利到达星星？（注意：材料比槽位多，要选对的！）",
+ predict:{q:"光穿过磨砂玻璃片后，会发生什么？",o:["全部穿过，亮度不变","只穿过一部分，光会变暗变散"],a:1,
+   why:"对！磨砂片是半透明的，只能让一部分光通过。"},
+ hints:["把右侧的材料拖到虚线框里试试。","木板不透明会把光全挡住；磨砂片只让一半光通过。","把【玻璃片】拖进方框，光就能全速前进！"],
+ card:{i:"🪟",t:"透明·半透明·不透明",
+   x:"光能穿过<b>透明</b>物体（玻璃）；能<b>部分</b>穿过<b>半透明</b>物体（磨砂片），穿过的光会变暗变弱；<b>不能</b>穿过<b>不透明</b>物体（木板）。"},
+ data:{src:{x:70,y:300,a:0},slots:[{x:480,y:300}],extraPalette:["stone"],
+   star:{x:830,y:300,r:26,need:0.9},shadowWall:true}},
+
+{id:"w3l2",w:2,k:1,name:"影子剧场",kind:"matslot",
+ storyIntro:"两道关卡框！星星需要<b>足够亮</b>的光。木板和石板虽然挡光，却能在幕布上变出影子——影子到底是怎么来的呢？",
+ storyOut:"耶！玻璃+磨砂，亮度刚刚好，还看到了影子！影之塔顶有个天文台：太阳、地球、月球排排队，能变出日食和月食，快去摆摆看！",
+ intro:"两道关卡框！让足够亮的光到达星星。偷偷告诉你：木板虽然不透光，却能变出影子哦。",
+ predict:{q:"不透明物体挡住光之后，在它的后面会出现什么？",o:["亮亮的光斑","黑黑的影子","彩虹色的光晕"],a:1,
+   why:"没错！光被挡住，后面就形成了影子。"},
+ hints:["星星需要足够亮的光，两种能透光的材料都要用上。","玻璃+磨砂都能透光，木板会挡光（但能在幕布上留下影子）。","把玻璃片和磨砂片分别放进两个方框里！"],
+ card:{i:"👤",t:"影子是怎样形成的",
+   x:"光沿直线传播，被<b>不透明物体挡住</b>后，光到不了的区域就形成了<b>影子</b>。半透明材料会让穿过的光变暗变细。"},
+ data:{src:{x:70,y:300,a:0},slots:[{x:400,y:300},{x:580,y:300}],extraPalette:["stone"],
+   star:{x:830,y:300,r:26,need:0.45},shadowWall:true}},
+
+{id:"w3l3",w:2,k:2,name:"日食与月食",kind:"eclipse",
+ storyIntro:"拖动三个天体排成一条直线！先让<b>月球</b>躲到中间（日食），再让<b>地球</b>站到中间（月食）——这都是「光走直线」的魔法！",
+ storyOut:"影之塔重燃！日食月食原来都是「光走直线 + 被挡住」的表演。咦，前面的路要穿过一片大水潭……光穿过水的时候，好像会<b>拐弯</b>？去「水之塔」看看！",
+ intro:"拖动太阳、地球、月球排成一条直线！第一幕：让月球躲到中间（日食）；第二幕：让地球站到中间（月食）。",
+ predict:{q:"发生日食时，是谁挡住了射向地球的太阳光？",o:["月球","地球自己","太阳自己"],a:0,
+   why:"对！日食时月球运行到太阳和地球中间，把光挡住了。"},
+ bossQ:{q:"日食和月食能发生，最根本的原因是什么？",o:["光沿直线传播，被不透明天体挡住形成影子","月球和地球自己也会发光","天体们会表演魔法"],a:0,
+   why:"对！光沿直线传播，被不透光的月球或地球挡住，就形成了日食和月食的影子。"},
+ hints:["把三个天体拖到同一条水平线上。","日食=月球在中间；月食=地球在中间。","第一幕摆成 太阳-月球-地球；第二幕摆成 太阳-地球-月球。"],
+ card:{i:"🌑",t:"日食和月食",
+   x:"<b>日食</b>：月球运行到太阳和地球之间，挡住射向地球的光，地球上出现月球的影子。<b>月食</b>：地球运行到太阳和月球之间，地球的影子落在月球上。它们都是光沿直线传播的证据！"},
+ data:{}},
+
+/* ============ W4 水之折射 ============ */
+{id:"w4l1",w:3,k:0,name:"看得见的鱼≠鱼",kind:"fish",
+ storyIntro:"水之塔到啦！看到水里那条亮晶晶的鱼了吗？小心——那是光的「骗术」！<b>光斜射进水会向下偏折</b>，真正的鱼藏得更深！",
+ storyOut:"叉中啦！看到的鱼比真实的鱼「浅」。下一片水域有两条鱼，其中一条就在正下方——垂直射进去的光，还会偏折吗？",
+ intro:"拖动激光器位置、转动方向后点【发射光束】！注意：虚线是你瞄准的方向，光进水会偏折——真正的鱼比看到的更深！",
+ predict:{q:"想叉中水里的鱼，应该瞄准哪里？",o:["正对着看到的鱼","瞄准看到的鱼的下方"],a:1,
+   why:"对！由于折射，鱼看起来比实际位置浅，要瞄低一点。"},
+ hints:["光斜射进水里会向下偏折。","别瞄那条亮晶晶的鱼影，往它的下方瞄。","把激光器移到中间偏左，斜向下对着鱼影的下方发射！"],
+ card:{i:"💧",t:"光的折射",
+   x:"光从空气<b>斜射</b>入水中时，传播方向会发生偏折，这种现象叫作<b>光的折射</b>。所以水中的物体看起来位置和实际不一样。"},
+ data:{rail:180,water:330,fish:[{rx:620,ry:470,gx:565,gy:425}],shots:99}},
+
+{id:"w4l2",w:3,k:1,name:"垂直入射不偏折",kind:"fish",
+ storyIntro:"两条鱼！一条就在正下方（<b>垂直入射不偏折</b>！），一条要用折射的智慧才能抓住。想想两种情况有什么不一样？",
+ storyOut:"太厉害了！垂直入射直直走，斜射才会拐弯。不好，塔顶的渔民爷爷遇到麻烦了：只有 5 支鱼叉，要叉 3 条鱼！快去帮帮他！",
+ intro:"两条鱼：一条就在正下方（垂直射入不偏折！），一条要利用折射才能抓住。",
+ predict:{q:"光垂直射入水中时，方向会改变吗？",o:["会偏折","不偏折，直直前进","会被水完全吸收"],a:1,
+   why:"正确！垂直入射时光不偏折，直直地穿过去。"},
+ hints:["正下方的鱼：把激光器移到它正上方，垂直向下发射。","斜着的鱼：光入水会向下偏折，瞄鱼影下方。","第一条鱼垂直射；第二条鱼把激光器放它左上方斜射。"],
+ card:{i:"⬇️",t:"垂直入射不偏折",
+   x:"光<b>垂直</b>射入水中时，传播方向<b>不改变</b>；只有斜射时才会发生折射偏折。"},
+ data:{rail:160,water:320,fish:[{rx:380,ry:480,gx:340,gy:438},{rx:640,ry:470,gx:590,gy:428}],shots:99}},
+
+{id:"w4l3",w:3,k:2,name:"渔民叉鱼挑战",kind:"fish",
+ storyIntro:"教材里的经典挑战来了！5 次机会叉 3 条鱼。记住渔民爷爷的秘诀：瞄准看到的鱼的——<b>下！方！</b>",
+ storyOut:"水之塔重燃！你已经掌握折射的秘密啦。看天边——白光穿过棱镜竟然开出了彩虹！下一座「彩虹塔」，等你去揭开颜色的秘密！",
+ intro:"教材里的真实挑战！只有 5 次发射机会，把 3 条鱼全部叉中！记住渔民的秘诀……",
+ predict:{q:"渔民叉鱼的秘诀是？",o:["瞄准看到的鱼的下方","闭着眼睛凭运气","瞄准看到的鱼的上方"],a:0,
+   why:"没错！因为折射，鱼看起来偏浅，真正的鱼在下方。"},
+ bossQ:{q:"为什么渔民要瞄准看到的鱼的【下方】叉鱼？",o:["光的折射让鱼看起来比实际位置浅","鱼一受惊就会往下沉","鱼叉太重会自己往下掉"],a:0,
+   why:"对！光从水中斜射进空气时发生折射，鱼看起来比实际位置浅，所以要瞄下方。"},
+ hints:["每条鱼都要瞄它亮影子的下方。","先垂直抓正下方的鱼最省力。","水越深偏折越明显，深鱼要瞄得更低。"],
+ card:{i:"🎣",t:"渔民叉鱼的智慧",
+   x:"由于光的折射，水中的鱼看起来比实际位置<b>浅</b>。渔民叉鱼要瞄准<b>看到的鱼的下方</b>才能叉中——这就是光的折射在生活中的应用！"},
+ data:{rail:140,water:310,shots:5,
+   fish:[{rx:470,ry:450,gx:425,gy:410},{rx:640,ry:480,gx:592,gy:436},{rx:790,ry:440,gx:748,gy:402}]}},
+
+/* ============ W5 彩虹棱镜 ============ */
+{id:"w5l1",w:4,k:0,name:"白光开花了",kind:"prismcrystal",
+ storyIntro:"彩虹塔里藏着一块魔法棱镜！白光穿过去会「开花」分成彩色光。转动棱镜，把<b>红色光</b>送到红水晶上！",
+ storyOut:"红光命中！白光里竟然藏着这么多种颜色。前面有两朵水晶花，一朵红一朵蓝——先送红光，再送蓝光！",
+ intro:"白光穿过棱镜会分成红绿蓝三色（其实白光藏着七种颜色！）。转动棱镜，让红色光照亮红水晶！",
+ predict:{q:"白光穿过棱镜之后会变成什么？",o:["还是一道白光","分散成多种颜色的光"],a:1,
+   why:"对啦！白光由多种色光组成，棱镜把它们分开了，这叫色散。"},
+ hints:["拖动棱镜旁边的小圆把手可以旋转棱镜。","注意观察：红色光在三色光的最外侧。","旋转棱镜，让红色的那道光对准红色水晶！"],
+ card:{i:"🌈",t:"棱镜的色散",
+   x:"白光通过三棱镜后会分解成<b>红、橙、黄、绿、蓝、靛、紫</b>等多种色光，这叫<b>色散</b>。彩虹就是天空中的大水珠做的色散实验！（游戏中简化为红绿蓝三色）"},
+ data:{src:{x:90,y:300,a:0},prism:{x:450,y:300,sol:36},
+   crystals:[{x:560,y:470,c:"red"}]}},
+
+{id:"w5l2",w:4,k:1,name:"双色水晶花",kind:"prismcrystal",
+ storyIntro:"两朵水晶花都想「喝」光！先让红光照亮红水晶，再转动棱镜把蓝光送去蓝水晶——<b>一步都不能急</b>哦。",
+ storyOut:"双花齐放！你已经会指挥颜色啦。塔顶有一扇彩虹旋转门：红绿蓝三色盘飞速旋转时会变成白光——快把它转起来！",
+ intro:"两朵水晶花！先让红光照亮红水晶，再转动棱镜让蓝光照亮蓝水晶。",
+ predict:{q:"白光里藏着多少种颜色的光？",o:["只有红绿蓝三种","许许多多（红橙黄绿蓝靛紫……）","白光里没有颜色"],a:1,
+   why:"对！白光由很多种色光组成，三棱镜能把它们分开。"},
+ hints:["红水晶和蓝水晶在不同的方向。","先转棱镜送红光去红水晶，成功后再送蓝光。","红光在最外侧；点亮红水晶后，把蓝光转向右边的蓝水晶。"],
+ card:{i:"💎",t:"白光的秘密配方",
+   x:"白光并不是「单纯」的光，它是由<b>多种色光混合</b>而成的。棱镜能把白光里的色光一一分开。"},
+ data:{src:{x:90,y:300,a:0},prism:{x:450,y:300,sol:87,sol2:8},
+   crystals:[{x:390,y:490,c:"red"},{x:560,y:470,c:"blue",r:22}]}},
+
+{id:"w5l3",w:4,k:2,name:"彩虹旋转门",kind:"wheel",
+ storyIntro:"连续点击转盘加速！红绿蓝是<b>光的三原色</b>，转得够快就会在你眼睛里混成白光，光之门就会打开！",
+ storyOut:"彩虹塔重燃！白光能分也能合。前面的「镜像回廊」全是镜子——光射到镜子上会往哪儿跑？去学「反弹」的规矩吧！",
+ intro:"连续点击彩虹转盘让它飞速旋转！当红绿蓝三色转得足够快，就会合成白光，打开光之门！",
+ predict:{q:"红绿蓝三色盘飞快旋转时，看上去会变成什么颜色？",o:["白色","黑色","灰色"],a:0,
+   why:"对！红绿蓝是光的三原色，混在一起就成了白光。"},
+ bossQ:{q:"彩色电视和手机屏幕能变出千万种颜色，靠的是什么？",o:["红绿蓝三原色光按比例混合","屏幕里涂满了白色颜料","屏幕后面藏着一道彩虹"],a:0,
+   why:"对！屏幕用红绿蓝三种小灯按不同比例混合，就能变出各种颜色。"},
+ hints:["连续快速点击转盘，让它越转越快。","转得够快时，三种颜色会在你眼睛里「混」成白光。","不停点转盘！速度条满了就会射出白光开门。"],
+ card:{i:"🎡",t:"光的三原色",
+   x:"<b>红、绿、蓝</b>是光的三原色。三种色光按合适的比例混合可以合成<b>白光</b>。彩色电视和手机屏幕就是用三色小灯变出所有颜色的！"},
+ data:{wheel:{x:420,y:300},sensor:{x:800,y:300,r:26,need:0.5}}},
+
+/* ============ W6 镜像回廊 ============ */
+{id:"w6l1",w:5,k:0,name:"第一面魔镜",kind:"mirrors",
+ storyIntro:"欢迎来到镜像回廊！光射到镜子上会按<b>「反射角 = 入射角」</b>弹走。拖动镜子、旋转角度，让光拐个弯点亮星星！（多了一面用不上的镜子，别被迷惑～）",
+ storyOut:"第一面镜子征服！光像小球一样弹来弹去。前面要两面镜子接力——而且光束直射到底会射中眼睛禁区，小心！",
+ intro:"拖动镜子移动、拖动镜端小把手旋转——让光反射到星星上！反射角=入射角。",
+ predict:{q:"光射到镜子上会怎样？",o:["被镜子吃掉","按 反射角=入射角 弹回去"],a:1,
+   why:"对！光像小球一样，怎么来就怎么弹走：反射角等于入射角。"},
+ hints:["把镜子拖到光束的路上。","把镜子斜成 45°，光就会拐 90° 的弯。","把镜子拖到右边光束上，斜 45° 让光向下反射到星星！"],
+ card:{i:"🪞",t:"光的反射定律",
+   x:"光遇到镜面会发生<b>反射</b>：<b>反射角等于入射角</b>。镜子能改变光的传播方向，自己却不会发光。"},
+ data:{src:{x:100,y:100,a:0},
+   mirrors:[{x:520,y:300,len:120,a:0,sol:{x:700,y:100,a:45}},
+            {x:330,y:480,len:120,a:-20}],
+   star:{x:700,y:500,r:23,need:0.9},eyes:[]}},
+
+{id:"w6l2",w:5,k:1,name:"双镜接力·眼睛禁区",kind:"mirrors",
+ storyIntro:"两面镜子接力传光！先让光向下，再让它向右。记住：<b>反射出去的光，走的也是直线</b>！（边上那面多余的镜子是干扰项哦）",
+ storyOut:"双镜接力成功！终极回廊在前方：三面镜子，翻山越岭——科学家还用这个原理测过月亮的距离呢！",
+ intro:"两面镜子接力反射！小心：光束直射到底会射中👁️眼睛禁区，必须用镜子保护好光路！",
+ predict:{q:"先猜一猜：这关的光路会是什么形状？",o:["一条直线","折线（在镜子处拐弯）","弯弯曲曲的曲线"],a:1,
+   why:"对！反射光沿直线传播，但镜子会让它拐弯——整段光路是一条折线！"},
+ hints:["第一面镜子让光向下，第二面让光再向右。","两面镜子都斜 45°，像接力赛一样传光。","上面镜子 45° 反射光向下，下面镜子 45° 反射光向右到星星。"],
+ card:{i:"🔂",t:"反射光也走直线",
+   x:"反射光同样<b>沿直线传播</b>。用多面镜子接力，就能让光按我们设计的路线前进。"},
+ data:{src:{x:80,y:300,a:0},
+   mirrors:[{x:300,y:420,len:120,a:0,sol:{x:420,y:300,a:45}},
+            {x:560,y:420,len:120,a:0,sol:{x:420,y:520,a:45}},
+            {x:770,y:170,len:120,a:30}],
+   star:{x:820,y:520,r:23,need:0.9},eyes:[{x:830,y:300,r:24}]}},
+
+{id:"w6l3",w:5,k:2,name:"三镜大回廊",kind:"mirrors",
+ storyIntro:"三面镜子的终极回廊！让光束翻山越岭点亮星星。彩蛋：科学家就是这样<b>用激光测月亮距离</b>的！（多出来的一面镜子，可能是陷阱……）",
+ storyOut:"镜像塔重燃！只剩最后一座塔了——「棱镜塔」。听说躲在高墙后面也能看到外面？两面 45° 的镜子藏着大秘密……",
+ intro:"三面镜子的终极回廊！让光束翻山越岭点亮星星。彩蛋：科学家就是这样用激光测月亮距离的！",
+ predict:{q:"科学家怎么测量月球到地球的距离？",o:["用激光照到月球再反射回来计时","用很长很长的尺子量","坐宇宙飞船去量"],a:0,
+   why:"真的！科学家向月球发射激光，接收反射回来的光，用时间算出距离。"},
+ bossQ:{q:"科学家为什么能用激光测量地球到月球的距离？",o:["激光射到月球再反射回来，用往返时间算距离","激光把月球照亮了方便拍照","用镜子把月球「拉」近了一点"],a:0,
+   why:"对！利用光的反射：激光往返时间 × 光速 ÷ 2，就是地月距离。"},
+ hints:["三面镜子，让光 上→右→下 拐三个弯。","每面镜子都转 45°。","左镜45°反射光向上，中镜45°反射向右，右镜45°反射向下到星星！"],
+ card:{i:"🌕",t:"激光测月距",
+   x:"科学家向月球发射激光，利用月面上的反射器把光<b>反射</b>回地球，测量往返时间，就能精确算出月球到地球约 <b>38 万千米</b>的距离！"},
+ data:{src:{x:100,y:550,a:0},
+   mirrors:[{x:240,y:400,len:120,a:0,sol:{x:300,y:550,a:-45}},
+            {x:420,y:300,len:120,a:0,sol:{x:300,y:150,a:-45}},
+            {x:600,y:300,len:120,a:0,sol:{x:700,y:150,a:45}},
+            {x:820,y:330,len:120,a:-30}],
+   star:{x:700,y:500,r:23,need:0.9},eyes:[{x:560,y:550,r:24},{x:820,y:150,r:24}]}},
+
+/* ============ W7 潜望之眼 ============ */
+{id:"w7l1",w:6,k:0,name:"墙后的风景",kind:"periscope",
+ storyIntro:"棱镜塔到了！高墙挡路？不怕！<b>两面固定的 45° 镜子就是潜望镜</b>——光反射两次，翻过墙头！",
+ storyOut:"墙后的风景看到啦！下一关反过来：从高处看墙脚下的目标，搭一个「向下看」的潜望镜！",
+ intro:"高墙挡住了视线！两面 45° 固定的镜子（只能平移不能转）就是潜望镜——把光两次反射，翻过墙头点亮星星！",
+ predict:{q:"潜望镜里有几面镜子？它们是随便摆的吗？",o:["两面，都固定 45°","一面，随便什么角度"],a:0,
+   why:"对！潜望镜=两面相互平行、与水平成 45° 的平面镜，反射两次。"},
+ hints:["光要先向上爬，再向右飞。","把一面镜子放到光束起点让它向上反射，另一面放到高处让它向右。","下面镜子接光向上，上面镜子在墙顶高度把光折向右边的星星！"],
+ card:{i:"🔭",t:"潜望镜的原理",
+   x:"潜望镜里有<b>两块相互平行、与水平方向成 45° 角</b>的平面镜。光经过<b>两次反射</b>，就能从低处「拐」到高处，让人在隐蔽处看到外面。"},
+ data:{src:{x:100,y:500,a:0},walls:[{x1:450,y1:200,x2:450,y2:600}],
+   mirrors:[{x:220,y:380,len:110,a:-45,fixed:true,sol:{x:300,y:500,a:-45}},
+            {x:520,y:300,len:110,a:-45,fixed:true,sol:{x:300,y:150,a:-45}}],
+   star:{x:740,y:150,r:26,need:0.9},eyes:[]}},
+
+{id:"w7l2",w:6,k:1,name:"战壕观察哨",kind:"periscope",
+ storyIntro:"这次你在高处，目标藏在墙脚下。两面 45° 镜一上一下，搭个<b>向下看</b>的潜望镜！",
+ storyOut:"潜望镜大功告成！闪闪听到了太阳棱镜的心跳……最终决战：用上这一路学会的<b>所有本领</b>，点亮太阳棱镜！",
+ intro:"这次反过来：你在高处，目标在墙下的低处。用两面 45° 镜搭一个「向下看」的潜望镜！",
+ predict:{q:"潜望镜能让躲起来的人看到外面，靠的是？",o:["光的两次反射","镜子自己会发光","光会自己拐弯"],a:0,
+   why:"对！全靠两面镜子接力反射光线。"},
+ hints:["光要先向下钻，再向右穿过墙底。","两面镜子同样都是 45°，只是一上一下。","上面镜子把光向下折，下面镜子把光向右折到目标！"],
+ card:{i:"🕳️",t:"潜望镜大显身手",
+   x:"潜望镜可以让人<b>躲在水下、战壕里或墙后</b>观察外面，潜水艇侦察海面靠的就是它——原理就是两次反射改变光路。"},
+ data:{src:{x:120,y:100,a:0},walls:[{x1:480,y1:60,x2:480,y2:430}],
+   mirrors:[{x:220,y:240,len:110,a:45,fixed:true,sol:{x:300,y:100,a:45}},
+            {x:520,y:350,len:110,a:45,fixed:true,sol:{x:300,y:480,a:45}}],
+   star:{x:760,y:480,r:26,need:0.9},eyes:[]}},
+
+{id:"w7l3",w:6,k:2,name:"点亮太阳棱镜",kind:"finale",
+ storyIntro:"就是这里！太阳棱镜沉睡着。找出真光源 → 对齐孔板 → 选对材料 → 穿越水层 → 棱镜分光 → 潜望双镜——<b>六重考验</b>，你一定能行！",
+ storyOut:"做到了！！太阳棱镜重新绽放，七塔齐亮，暗影迷雾散去——光之国得救啦！",
+ intro:"终极大考验！依次用上：①找出真光源 ②对齐孔板 ③选对材料 ④穿越水层 ⑤棱镜分光 ⑥潜望双镜——点亮太阳棱镜！（注意：材料里有干扰项！）",
+ predict:{q:"最后一关！白光穿过水下的棱镜后会怎样？",o:["分散成彩色光束","被水融化消失","变成一道更粗的白光"],a:0,
+   why:"对！色散在水里一样会发生。让绿色光照进潜望镜吧！"},
+ bossQ:{q:"潜望镜能让人躲在墙后看到外面，靠的是什么原理？",o:["两面 45° 平面镜的两次反射","镜子自己会发光照亮外面","光在镜筒里自己拐弯"],a:0,
+   why:"对！潜望镜 = 两面相互平行、与水平成 45° 的平面镜，光经过两次反射改变路线。"},
+ hints:["先点真正的光源（谁会自己发光？），再对齐孔板、选能全透光的材料。","光入水会向下偏折；转动棱镜让【绿色】光水平向右，两面 45° 镜接力往下再向右。","顺序：点太阳→两板对齐斜线→槽里放玻璃→棱镜转出水平绿光→双镜接力到太阳棱镜！注意别让光直射眼睛👁️"],
+ card:{i:"☀️",t:"太阳棱镜·毕业",
+   x:"恭喜你集齐光的全部秘密：光源、直线传播、透明与不透明、折射、色散、反射、潜望镜！<b>光的世界，由你点亮！</b>"},
+ data:{sun:{x:70,y:80},moon:{x:70,y:190},srcA:25,
+   boards:[{x:180,sol:136},{x:300,sol:192}],
+   slot:{x:400,y:238},water:300,
+   prism:{x:650,y:399,sol:-75},
+   mirrors:[{x:700,y:470,len:110,a:45,fixed:true,sol:{x:790,y:399,a:45}},
+            {x:700,y:150,len:110,a:45,fixed:true,sol:{x:790,y:520,a:45}},
+            {x:250,y:460,len:110,a:0,fixed:true}],
+   star:{x:866,y:520,r:30,need:0.9},eyes:[{x:866,y:399,r:22}]}},
+];
+const LEVEL_BY_ID={};LEVELS.forEach(l=>LEVEL_BY_ID[l.id]=l);
+
+/* ================= 几何与光线追踪 ================= */
+function raySegT(px,py,dx,dy,x1,y1,x2,y2){
+  const ex=x2-x1,ey=y2-y1,den=dx*ey-dy*ex;
+  if(Math.abs(den)<1e-9)return null;
+  const t=((x1-px)*ey-(y1-py)*ex)/den;
+  const u=((x1-px)*dy-(y1-py)*dx)/den;
+  if(t>0.5&&u>=-0.001&&u<=1.001)return t;
+  return null;
+}
+function rayCircleT(px,py,dx,dy,cx,cy,r){
+  const ox=px-cx,oy=py-cy;
+  const b=ox*dx+oy*dy,c=ox*ox+oy*oy-r*r;
+  const disc=b*b-c;if(disc<0)return null;
+  const t=-b-Math.sqrt(disc);
+  return t>0.5?t:null;
+}
+function mirrorEnds(m){
+  const c=Math.cos(m.a*DEG),s=Math.sin(m.a*DEG),h=m.len/2;
+  return {x1:m.x-c*h,y1:m.y-s*h,x2:m.x+c*h,y2:m.y+s*h};
+}
+/* 场景对象求最近交点 */
+function nearestHit(sc,x,y,a){
+  const dx=Math.cos(a),dy=Math.sin(a);
+  let best=null;
+  const tryT=(t,info)=>{if(t!==null&&(!best||t<best.t))best=Object.assign({t},info);};
+  // 画布边界
+  let tb=1e9;
+  if(dx>1e-9)tb=Math.min(tb,(W-x)/dx);if(dx<-1e-9)tb=Math.min(tb,(0-x)/dx);
+  if(dy>1e-9)tb=Math.min(tb,(H-y)/dy);if(dy<-1e-9)tb=Math.min(tb,(0-y)/dy);
+  best={t:tb,type:"bounds"};
+  for(const m of sc.mirrors){const e=mirrorEnds(m);
+    tryT(raySegT(x,y,dx,dy,e.x1,e.y1,e.x2,e.y2),{type:"mirror",m});}
+  for(const wl of sc.walls){
+    tryT(raySegT(x,y,dx,dy,wl.x1,wl.y1,wl.x2,wl.y2),{type:"wall"});}
+  for(const b of sc.boards){
+    if(Math.abs(dx)<1e-9)continue;
+    const t=((b.x)-x)/dx; if(t<=0.5)continue;
+    const iy=y+dy*t;
+    // 挡板视为整面屏障（卡纸实验）：只有小孔能过，不能从板顶/板底绕过
+    if(Math.abs(iy-b.y)<=b.hole/2)tryT(t,{type:"hole"});   // 穿过小孔
+    else tryT(t,{type:"board"});                            // 被挡住
+  }
+  for(const p of sc.placedPlates()){
+    if(Math.abs(dx)<1e-9)continue;
+    const tL=(p.x-p.w/2-x)/dx,tR=(p.x+p.w/2-x)/dx;
+    const t=Math.min(tL,tR);if(t<=0.5)continue;
+    const iy=y+dy*t;
+    if(Math.abs(iy-p.y)<=p.h/2)tryT(t,{type:"plate",p});
+  }
+  if(sc.water&&dy>1e-9){
+    const t=(sc.water-y)/dy;
+    if(t>0.5)tryT(t,{type:"water"});
+  }
+  for(const pr of sc.prisms){
+    tryT(rayCircleT(x,y,dx,dy,pr.x,pr.y,pr.size),{type:"prism",pr});}
+  for(const e of sc.eyes){
+    tryT(rayCircleT(x,y,dx,dy,e.x,e.y,e.r),{type:"eye",e});}
+  for(const tg of sc.targets){
+    tryT(rayCircleT(x,y,dx,dy,tg.x,tg.y,tg.r),{type:"target",tg});}
+  for(const f of sc.fishes){
+    if(!f.caught)tryT(rayCircleT(x,y,dx,dy,f.rx,f.ry,26),{type:"fish",f});}
+  return best;
+}
+/* 追踪一条光（可能因棱镜分光产生子光束） */
+function traceRay(sc,x,y,a,color,alpha,depth,out){
+  const pts=[{x,y}];let cx=x,cy=y,ca=a,cal=alpha;
+  for(let i=0;i<12;i++){                    // 反射/折射步数上限：finale 潜望结构需要更多步；上限本身即防死循环
+    const hit=nearestHit(sc,cx,cy,ca);
+    if(!hit)break;
+    const hx=cx+Math.cos(ca)*hit.t,hy=cy+Math.sin(ca)*hit.t;
+    pts.push({x:hx,y:hy});
+    if(hit.type==="bounds"||hit.type==="wall"||hit.type==="board")break;
+    if(hit.type==="hole"){cx=hx+Math.cos(ca)*2;cy=hy+Math.sin(ca)*2;continue;}
+    if(hit.type==="plate"){
+      const mat=hit.p.mat;
+      if(!mat||mat==="empty")break;                       // 空槽位挡光
+      if(mat==="wood"){sc.shadows.push({x:hx,y:hy,a:ca});break;}
+      if(mat==="stone")break;                             // 石板：不透明诱饵，挡光不留影子
+      if(mat==="frost")cal*=0.55;
+      cx=hx+Math.cos(ca)*2;cy=hy+Math.sin(ca)*2;continue;
+    }
+    if(hit.type==="water"){
+      let dev=ca-Math.PI/2;
+      const s=Math.sign(dev)||1;
+      dev=s*Math.max(0,Math.abs(dev)-15*DEG);
+      ca=Math.PI/2+dev;
+      cx=hx+Math.cos(ca)*2;cy=hy+Math.sin(ca)*2;continue;
+    }
+    if(hit.type==="mirror"){
+      ca=2*hit.m.a*DEG-ca;
+      cx=hx+Math.cos(ca)*2;cy=hy+Math.sin(ca)*2;continue;
+    }
+    if(hit.type==="eye"){sc.eyeHit=true;sc.eyeHitFriendly=!!hit.e.friendly;break;}
+    if(hit.type==="target"){
+      const tg=hit.tg;
+      if(!tg.color||tg.color===color){
+        tg.glow=Math.max(tg.glow,cal);
+        tg.lastColor=color;
+      }
+      break;
+    }
+    if(hit.type==="fish"){hit.f.justHit=true;break;}
+    if(hit.type==="prism"){
+      out.push({pts,color,alpha:cal,wide:cal<0.9});
+      if(depth>=2)return;
+      const pr=hit.pr,base=ca+35*DEG+pr.rot*DEG;
+      const fan=[["red",-14],["green",0],["blue",14]];
+      for(const [cn,off] of fan)
+        traceRay(sc,pr.x,pr.y,base+off*DEG,cn,cal,depth+1,out);
+      return;
+    }
+  }
+  out.push({pts,color,alpha:cal,wide:cal<0.9});
+}
+function traceAll(sc){
+  sc.shadows=[];sc.eyeHit=false;sc.eyeHitFriendly=false;
+  for(const tg of sc.targets)tg.glow=0;
+  for(const f of sc.fishes)f.justHit=false;
+  const paths=[];
+  if(sc.beamOn&&sc.src)
+    traceRay(sc,sc.src.x,sc.src.y,sc.src.a*DEG,sc.srcColor||"white",1,0,paths);
+  return paths;
+}
+
+/* ================= 场景构建 ================= */
+let SC=null; // 当前场景
+function buildScene(lv){
+  const d=lv.data||{};
+  const sc={lv,kind:lv.kind,beamOn:false,fails:SAVE.fails[lv.id]||0,
+    hintLevel:0,attempts:0,phase:"play",t:0,won:false,
+    mirrors:[],boards:[],walls:[],prisms:[],eyes:[],targets:[],
+    slots:[],palette:[],fishes:[],shadows:[],src:null,srcColor:"white",
+    water:null,objects:[],bodies:[],msgs:[],demoStep:-1,demoTimer:0,
+    drag:null,predictOK:null,custom:{},finished:false};
+  const D=d;
+  switch(lv.kind){
+    case "findsrc":
+      sc.objects=D.objs.map(o=>({...o,found:false,shake:0}));break;
+    case "darkroom":
+      sc.custom={lamp:{x:200,y:420},door:{...D.door,reveal:0,open:false}};break;
+    case "eyereveal":
+      sc.custom={eye:{...D.eye,r:42},lit:false,
+        stars:D.stars.map(s=>({...s,got:false,vis:0}))};
+      sc.eyes=[{...D.eye,r:42,friendly:true}];
+      sc.src={x:150,y:490,a:-40,rotOnly:true};sc.srcColor="warm";break;
+    case "boards":
+      sc.src={...D.src};sc.boards=D.boards.map((b,i)=>({id:"b"+i,x:b.x,y:300+ (i%2?60:-60),w:26,h:340,hole:46,sol:b.sol,axis:"y"}));
+      sc.targets=[{...D.star,glow:0,icon:"⭐"}];
+      sc.eyes=D.eyes.map(e=>({...e,danger:true}));break;
+    case "bellcorner":
+      sc.custom={bell:{x:180,y:430},bird:{x:700,y:140,awake:false},
+        torch:{x:180,y:250},tried:false,rings:[],ringT:0};break;
+    case "matslot":
+      sc.src={...D.src};
+      sc.slots=D.slots.map((s,i)=>({id:"slot"+i,x:s.x,y:s.y,w:30,h:150,mat:null}));
+      sc.palette=[{mat:"glass",x:858,y:120},{mat:"frost",x:858,y:250},{mat:"wood",x:858,y:380}];
+      (D.extraPalette||[]).forEach((m,i)=>sc.palette.push({mat:m,x:858,y:500+i*110}));
+      sc.targets=[{...D.star,glow:0,icon:"⭐"}];
+      sc.custom={shadowWall:D.shadowWall};break;
+    case "eclipse":
+      sc.bodies=[
+        {id:"sun",e:"🌞",x:140,y:300,r:44},
+        {id:"moon",e:"🌕",x:420,y:210,r:18},
+        {id:"earth",e:"🌏",x:640,y:390,r:30}];
+      sc.custom={phase:0,anim:0,doneFlags:[false,false]};break;
+    case "fish":
+      sc.water=D.water;
+      sc.src={x:300,y:D.rail,a:70,moveAxis:"x",rotatable:true,amin:15,amax:165};
+      sc.fishes=D.fish.map(f=>({...f,caught:false,jump:0}));
+      sc.custom={shots:D.shots,shotsMax:D.shots,aimLine:true};break;
+    case "prismcrystal":
+      sc.src={...D.src};
+      sc.prisms=[{x:D.prism.x,y:D.prism.y,size:44,rot:0,sol:D.prism.sol,sol2:D.prism.sol2,rotOnly:true}];
+      sc.targets=D.crystals.map(c=>({x:c.x,y:c.y,r:c.r||30,glow:0,color:c.c,icon:"crystal"}));
+      sc.custom={stage:0};break;
+    case "wheel":
+      sc.custom={wheel:{...D.wheel,r:70,speed:0,ang:0},doorOpen:false};
+      sc.targets=[{...D.sensor,glow:0,icon:"🚪",color:null}];
+      sc.src={x:D.wheel.x,y:D.wheel.y,a:0,hidden:true};break;
+    case "mirrors":case "periscope":
+      sc.src={...D.src};
+      sc.mirrors=D.mirrors.map((m,i)=>({id:"m"+i,x:m.x,y:m.y,len:m.len,a:m.a,
+        fixed:!!m.fixed,sol:m.sol}));
+      if(D.walls)sc.walls=D.walls;
+      sc.targets=[{...D.star,glow:0,icon:lv.kind==="periscope"?"⭐":"⭐"}];
+      sc.eyes=(D.eyes||[]).map(e=>({...e,danger:true}));break;
+    case "finale":
+      sc.water=D.water;
+      sc.custom={sunOn:false,sun:{...D.sun,r:36},moon:{...D.moon,r:30}};
+      sc.boards=D.boards.map((b,i)=>({id:"b"+i,x:b.x,y:300,w:26,h:340,hole:44,sol:b.sol,axis:"y"}));
+      sc.slots=[{id:"slot0",x:D.slot.x,y:D.slot.y,w:30,h:130,mat:null}];
+      sc.palette=[{mat:"glass",x:862,y:110},{mat:"frost",x:862,y:220},{mat:"wood",x:862,y:330},{mat:"stone",x:862,y:440}];
+      sc.prisms=[{x:D.prism.x,y:D.prism.y,size:44,rot:0,sol:D.prism.sol,rotOnly:true}];
+      sc.mirrors=D.mirrors.map((m,i)=>({id:"m"+i,x:m.x,y:m.y,len:m.len,a:m.a,
+        fixed:true,sol:m.sol}));
+      sc.targets=[{...D.star,glow:0,icon:"☀️棱镜",anyColor:true}];
+      sc.targets[0].color=null;
+      sc.eyes=D.eyes.map(e=>({...e,danger:true}));break;
+    case "sandbox":
+      sc.src={x:120,y:120,a:20,moveAxis:"xy",rotatable:true,amin:-180,amax:180};
+      sc.mirrors=[{id:"m0",x:400,y:200,len:120,a:30},{id:"m1",x:600,y:420,len:120,a:-60}];
+      sc.prisms=[{x:550,y:180,size:44,rot:20,rotOnly:true,dragMove:true}];
+      sc.slots=[{id:"slot0",x:300,y:450,w:30,h:140,mat:null}];
+      sc.palette=[{mat:"glass",x:862,y:120},{mat:"frost",x:862,y:230},{mat:"wood",x:862,y:340}];
+      sc.water=480;sc.beamOn=true;break;
+  }
+  return sc;
+}
+
+/* 给场景补上"材料板"查询（空槽位视为挡光） */
+buildScene=(function(orig){return function(lv){
+  const sc=orig(lv);
+  sc.placedPlates=function(){return this.slots.map(s=>({x:s.x,y:s.y,w:s.w,h:s.h,mat:s.mat||"empty"}));};
+  return sc;};})(buildScene);
+
+/* ================= 绘制 ================= */
+const cv=$("cv"),ctx=cv.getContext("2d");
+const BEAM_COLORS={white:"#fff3c4",warm:"#ffd98a",red:"#ff5a5a",green:"#5aff8a",blue:"#59b0ff"};
+function drawBG(t){
+  ctx.clearRect(0,0,W,H);
+  const g=ctx.createRadialGradient(W/2,H*0.35,60,W/2,H/2,700);
+  g.addColorStop(0,"#131c48");g.addColorStop(1,"#04060f");
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  for(const s of STARS){
+    const a=0.35+0.65*Math.abs(Math.sin(t/700+s.p));
+    ctx.fillStyle=`rgba(255,255,255,${a*0.8})`;
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,7);ctx.fill();
+  }
+}
+function drawBeamPaths(paths){
+  for(const p of paths){
+    const col=BEAM_COLORS[p.color]||"#fff";
+    ctx.save();
+    ctx.lineJoin="round";ctx.lineCap="round";
+    ctx.globalAlpha=0.22*p.alpha;ctx.strokeStyle=col;ctx.lineWidth=p.wide?12:14;
+    ctx.shadowColor=col;ctx.shadowBlur=22;
+    strokePts(p.pts);
+    ctx.globalAlpha=0.95*p.alpha;ctx.lineWidth=p.wide?2.6:4;ctx.shadowBlur=10;
+    strokePts(p.pts);
+    ctx.restore();
+  }
+}
+function strokePts(pts){
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+  ctx.stroke();
+}
+function emoji(e,x,y,size,alpha=1){
+  ctx.save();ctx.globalAlpha=alpha;ctx.font=size+"px sans-serif";
+  ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(e,x,y);ctx.restore();
+}
+function label(txt,x,y,size=13,color="#bcd"){
+  ctx.save();ctx.font=size+"px sans-serif";ctx.textAlign="center";
+  ctx.fillStyle=color;ctx.fillText(txt,x,y);ctx.restore();
+}
+function glowCircle(x,y,r,color,a){
+  const g=ctx.createRadialGradient(x,y,2,x,y,r);
+  g.addColorStop(0,color);g.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.save();ctx.globalAlpha=a;ctx.fillStyle=g;
+  ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.restore();
+}
+function drawWater(t){
+  if(!SC.water)return;
+  ctx.save();
+  ctx.fillStyle="rgba(30,90,160,0.28)";
+  ctx.fillRect(0,SC.water,W,H-SC.water);
+  ctx.strokeStyle="rgba(120,200,255,0.9)";ctx.lineWidth=3;
+  ctx.shadowColor="#4fc3f7";ctx.shadowBlur=12;
+  ctx.beginPath();
+  for(let x=0;x<=W;x+=12){
+    const y=SC.water+Math.sin(x/28+t/300)*4;
+    x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();ctx.restore();
+  label("💧 水面",40,SC.water-14,13,"#9fd8ff");
+}
+function drawMirror(m,hi){
+  const e=mirrorEnds(m);
+  ctx.save();
+  if(hi){glowCircle(m.x,m.y,m.len*0.75,"rgba(255,220,120,.35)",1);}
+  ctx.lineCap="round";
+  ctx.strokeStyle="rgba(180,220,255,.35)";ctx.lineWidth=11;ctx.beginPath();
+  ctx.moveTo(e.x1,e.y1);ctx.lineTo(e.x2,e.y2);ctx.stroke();
+  ctx.strokeStyle="#dff1ff";ctx.lineWidth=5;ctx.shadowColor="#9fd0ff";ctx.shadowBlur=10;
+  ctx.beginPath();ctx.moveTo(e.x1,e.y1);ctx.lineTo(e.x2,e.y2);ctx.stroke();
+  ctx.restore();
+  if(!m.fixed){ // 旋转把手
+    const hx=m.x+Math.cos(m.a*DEG)*(m.len/2+24),hy=m.y+Math.sin(m.a*DEG)*(m.len/2+24);
+    ctx.save();ctx.fillStyle="#ffd166";ctx.shadowColor="#ffd166";ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(hx,hy,10,0,7);ctx.fill();ctx.restore();
+    m.handle={x:hx,y:hy};
+  }
+}
+function drawBoard(b,hi){
+  ctx.save();
+  if(hi)glowCircle(b.x,b.y,130,"rgba(255,220,120,.4)",1);
+  ctx.fillStyle="#5a4632";
+  ctx.strokeStyle="#8a6f4d";ctx.lineWidth=2;
+  const top=b.y-b.h/2,gap=b.hole/2;
+  ctx.fillRect(b.x-b.w/2,top,b.w,b.h/2-gap);
+  ctx.fillRect(b.x-b.w/2,b.y+gap,b.w,b.h/2-gap);
+  ctx.strokeRect(b.x-b.w/2,top,b.w,b.h/2-gap);
+  ctx.strokeRect(b.x-b.w/2,b.y+gap,b.w,b.h/2-gap);
+  ctx.fillStyle="rgba(140,220,255,.25)";
+  ctx.fillRect(b.x-b.w/2,b.y-gap,b.w,b.hole);
+  ctx.restore();
+}
+function drawSlotFrame(s,hi){
+  ctx.save();
+  if(hi)glowCircle(s.x,s.y,110,"rgba(255,220,120,.4)",1);
+  if(!s.mat){
+    ctx.fillStyle="rgba(40,46,60,.85)";
+    ctx.fillRect(s.x-s.w/2,s.y-s.h/2,s.w,s.h);
+  }
+  ctx.setLineDash([6,5]);ctx.strokeStyle="#ffd166";ctx.lineWidth=2;
+  ctx.strokeRect(s.x-s.w/2,s.y-s.h/2,s.w,s.h);ctx.setLineDash([]);
+  ctx.restore();
+}
+function drawPlate(p,small){
+  const w=small?44:p.w,h=small?64:p.h,x=p.x,y=p.y;
+  ctx.save();
+  if(p.mat==="glass"){ctx.fillStyle="rgba(160,230,255,.45)";ctx.strokeStyle="#aee9ff";}
+  else if(p.mat==="frost"){ctx.fillStyle="rgba(230,240,255,.6)";ctx.strokeStyle="#cfd8ea";}
+  else if(p.mat==="stone"){ctx.fillStyle="#5a5f6e";ctx.strokeStyle="#8b91a3";}
+  else{ctx.fillStyle="#6b4a2f";ctx.strokeStyle="#8a6f4d";}
+  ctx.lineWidth=2.5;
+  ctx.fillRect(x-w/2,y-h/2,w,h);ctx.strokeRect(x-w/2,y-h/2,w,h);
+  if(p.mat==="frost"){ctx.fillStyle="rgba(120,130,150,.35)";
+    for(let i=-2;i<=2;i++)ctx.fillRect(x-w/2+4,y+i*h/6,w-8,3);}
+  if(p.mat==="stone"){ctx.fillStyle="rgba(30,33,44,.5)";
+    ctx.beginPath();ctx.arc(x-w/6,y-h/6,6,0,7);ctx.arc(x+w/5,y+h/5,5,0,7);ctx.fill();}
+  ctx.restore();
+  if(small)label(p.mat==="glass"?"玻璃片":p.mat==="frost"?"磨砂片":p.mat==="stone"?"石板":"木板",x,y+h/2+14,12,"#cfe3ff");
+}
+function drawPrism(pr,t,hi){
+  ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(pr.rot*DEG);
+  if(hi)glowCircle(0,0,90,"rgba(255,220,120,.4)",1);
+  const s=pr.size;
+  ctx.beginPath();ctx.moveTo(0,-s);ctx.lineTo(s*0.9,s*0.75);ctx.lineTo(-s*0.9,s*0.75);ctx.closePath();
+  const g=ctx.createLinearGradient(-s,-s,s,s);
+  g.addColorStop(0,"rgba(200,240,255,.75)");g.addColorStop(.5,"rgba(255,220,255,.55)");g.addColorStop(1,"rgba(200,255,230,.7)");
+  ctx.fillStyle=g;ctx.fill();
+  ctx.strokeStyle="#e8f6ff";ctx.lineWidth=2.5;ctx.shadowColor="#bdf";ctx.shadowBlur=14;ctx.stroke();
+  ctx.restore();
+  const hx=pr.x+Math.cos((pr.rot-90)*DEG)*(pr.size+26),hy=pr.y+Math.sin((pr.rot-90)*DEG)*(pr.size+26);
+  ctx.save();ctx.fillStyle="#ffd166";ctx.shadowColor="#ffd166";ctx.shadowBlur=8;
+  ctx.beginPath();ctx.arc(hx,hy,10,0,7);ctx.fill();ctx.restore();
+  pr.handle={x:hx,y:hy};
+}
+function drawEye(e,t,friendly){
+  const pulse=1+0.08*Math.sin(t/250);
+  ctx.save();
+  ctx.strokeStyle=friendly?"#ffd166":"#ff5252";ctx.lineWidth=3;
+  ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.arc(e.x,e.y,e.r*pulse,0,7);ctx.stroke();ctx.setLineDash([]);
+  ctx.restore();
+  emoji("👁️",e.x,e.y,e.r*1.2);
+  label(friendly?"观察之眼":"禁区·眼睛",e.x,e.y+e.r+14,11,friendly?"#ffd166":"#ff8a8a");
+}
+function drawTarget(tg,t){
+  const gl=clamp(tg.glow,0,1);
+  if(tg.icon==="crystal"){
+    const col=tg.color==="red"?"#ff6b6b":tg.color==="green"?"#51e07f":"#5aa8ff";
+    glowCircle(tg.x,tg.y,54,col,0.25+gl*0.75);
+    emoji("🔮",tg.x,tg.y,44);
+    ctx.save();ctx.globalAlpha=0.85;ctx.strokeStyle=col;ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(tg.x,tg.y,tg.r,0,7);ctx.stroke();ctx.restore();
+    label(tg.color==="red"?"红水晶":tg.color==="green"?"绿水晶":"蓝水晶",tg.x,tg.y+tg.r+16,12,col);
+  }else if(tg.icon==="🚪"){
+    glowCircle(tg.x,tg.y,60,"#ffe08a",0.2+gl*0.8);
+    emoji("🚪",tg.x,tg.y,52);
+    label("光之门",tg.x,tg.y+tg.r+16,12,"#ffe08a");
+  }else if(tg.icon==="☀️棱镜"){
+    glowCircle(tg.x,tg.y,70,"#ffd166",0.2+gl*0.9);
+    emoji("🔺",tg.x,tg.y,50);
+    label("太阳棱镜",tg.x,tg.y+tg.r+18,13,"#ffd166");
+  }else{
+    glowCircle(tg.x,tg.y,58,"#fff3a0",0.15+gl*0.85);
+    emoji("⭐",tg.x,tg.y,44,0.35+gl*0.65);
+  }
+}
+function drawShadows(){
+  for(const s of SC.shadows){
+    ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.a);
+    const g=ctx.createLinearGradient(0,0,150,0);
+    g.addColorStop(0,"rgba(0,0,0,.75)");g.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=g;ctx.fillRect(0,-60,150,120);ctx.restore();
+    emoji("👤",s.x+Math.cos(s.a)*90,s.y+Math.sin(s.a)*90,34,0.7);
+  }
+}
+function drawSrc(t){
+  const s=SC.src;if(!s||s.hidden)return;
+  glowCircle(s.x,s.y,44,"rgba(255,220,140,.5)",1);
+  ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.a*DEG);
+  emoji("🔦",0,0,40);ctx.restore();
+  if(s.rotatable||s.rotOnly){
+    const hx=s.x+Math.cos(s.a*DEG)*44,hy=s.y+Math.sin(s.a*DEG)*44;
+    ctx.save();ctx.fillStyle="#ffd166";ctx.shadowColor="#ffd166";ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(hx,hy,10,0,7);ctx.fill();ctx.restore();
+    s.handle={x:hx,y:hy};
+  }
+}
+
+/* ---------- 各玩法专属绘制 ---------- */
+function drawKind(t){
+  const sc=SC,c=sc.custom;
+  switch(sc.kind){
+    case "findsrc":
+      label("👇 点击【自己正在发光】的物体",W/2,44,17,"#ffe9b0");
+      for(const o of sc.objects){
+        if(o.src&&o.found)glowCircle(o.x,o.y,64,"rgba(255,220,120,.8)",1);
+        if(o.shake>0){o.shake--;}
+        const ox=o.shake>0?Math.sin(o.shake/2)*5:0;
+        emoji(o.e,o.x+ox,o.y,o.src&&o.found?58:48,o.src&&!o.found?0.85:1);
+        label(o.label,o.x,o.y+44,13,o.found?"#ffd166":"#9fb4e8");
+        if(o.found)emoji("✅",o.x+34,o.y-30,22);
+      }
+      label(`已找到光源 ${sc.objects.filter(o=>o.src&&o.found).length} / 3`,W/2,H-30,15,"#8ecae6");
+      break;
+    case "darkroom":{
+      const lamp=c.lamp,door=c.door;
+      // 房间家具剪影
+      ctx.save();ctx.fillStyle="#0b1130";
+      ctx.fillRect(80,420,120,120);ctx.fillRect(330,460,140,80);ctx.fillRect(560,420,90,120);
+      ctx.restore();
+      emoji("🛋️",140,440,54);emoji("📦",400,480,54);emoji("🪑",605,450,54);
+      // 大门
+      if(door.reveal>0){
+        glowCircle(door.x,door.y,80,"rgba(255,220,120,"+(door.reveal*0.9)+")",1);
+        emoji("🚪",door.x,door.y,64,door.reveal);
+        if(door.reveal>0.6)label("点我出去！",door.x,door.y-56,14,"#ffd166");
+      }
+      // 灯 + 黑暗遮罩
+      ctx.save();
+      ctx.fillStyle="rgba(0,0,5,0.93)";
+      ctx.beginPath();ctx.rect(0,0,W,H);
+      ctx.arc(lamp.x,lamp.y,170,0,7,true);ctx.fill("evenodd");ctx.restore();
+      glowCircle(lamp.x,lamp.y,150,"rgba(255,220,140,.35)",1);
+      emoji("🏮",lamp.x,lamp.y,52);
+      label("拖着我找出口",lamp.x,lamp.y+48,13,"#ffd166");
+      // 距离门近则渐显
+      const dd=dist(lamp.x,lamp.y,door.x,door.y);
+      door.reveal=clamp((230-dd)/120,0,1);
+      break;}
+    case "eyereveal":{
+      drawSrc(t);
+      drawEye(c.eye,t,true);
+      for(const s of c.stars){
+        if(s.vis>0&&!s.got){glowCircle(s.x,s.y,50,"rgba(255,240,150,"+s.vis*0.8+")",1);
+          emoji("🌟",s.x,s.y,44,s.vis);}
+        if(s.got)emoji("✨",s.x,s.y,30,0.4);
+      }
+      if(!c.lit)label("把光射进👁️，星星才会现身！",W/2,44,16,"#ffe9b0");
+      else if(c.stars.some(s=>!s.got))label("点击出现的星星！",W/2,44,16,"#ffe9b0");
+      break;}
+    case "bellcorner":{
+      // L 形墙
+      ctx.save();ctx.fillStyle="#2c3763";ctx.strokeStyle="#4a5b95";ctx.lineWidth=3;
+      ctx.fillRect(380,60,36,300);ctx.fillRect(380,60,320,36);
+      ctx.strokeRect(380,60,36,300);ctx.strokeRect(380,60,320,36);ctx.restore();
+      label("墙角",398,380,12,"#8aa");
+      emoji("🔦",c.torch.x,c.torch.y,50);label("点我试光",c.torch.x,c.torch.y+42,13,"#9fb4e8");
+      emoji("🔔",c.bell.x,c.bell.y,50);label("点我摇铃",c.bell.x,c.bell.y+42,13,"#9fb4e8");
+      // 小鸟
+      glowCircle(c.bird.x,c.bird.y,50,c.bird.awake?"rgba(255,220,120,.8)":"rgba(80,90,140,.3)",1);
+      emoji(c.bird.awake?"🐤":"😴",c.bird.x,c.bird.y,52);
+      label(c.bird.awake?"醒啦！":"zzZ…",c.bird.x,c.bird.y+44,13,"#ffd166");
+      // 试光动画：被墙挡住
+      if(c.beamAnim>0){c.beamAnim--;
+        ctx.save();ctx.strokeStyle="#ffd98a";ctx.lineWidth=4;ctx.shadowColor="#ffd98a";ctx.shadowBlur=12;
+        ctx.beginPath();ctx.moveTo(c.torch.x+20,c.torch.y);ctx.lineTo(380,c.torch.y);ctx.stroke();ctx.restore();
+        label("❌ 光被墙挡住了！",c.torch.x+120,c.torch.y-24,14,"#ff9a9a");}
+      // 声波
+      for(const r of c.rings){
+        ctx.save();ctx.strokeStyle=`rgba(140,220,255,${r.a})`;ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,7);ctx.stroke();ctx.restore();
+      }
+      break;}
+    case "eclipse":{
+      // 轨道参考线
+      ctx.save();ctx.setLineDash([4,8]);ctx.strokeStyle="rgba(140,170,255,.4)";
+      ctx.beginPath();ctx.moveTo(60,300);ctx.lineTo(840,300);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      label(c.phase===0?"第一幕：摆出【日食】——谁挡住射向地球的光？":
+            c.phase===1?"第二幕：摆出【月食】——谁的影子落在月球上？":"🎉 两种天象都完成啦！",
+            W/2,60,17,"#ffe9b0");
+      const sun=sc.bodies[0],moon=sc.bodies[1],earth=sc.bodies[2];
+      // 对齐判定
+      const aligned=Math.abs(sun.y-300)<cssTol(28)&&Math.abs(moon.y-300)<cssTol(28)&&Math.abs(earth.y-300)<cssTol(28);
+      // 光带
+      if(aligned){
+        ctx.save();ctx.strokeStyle="rgba(255,230,150,.5)";ctx.lineWidth=26;
+        ctx.shadowColor="#ffd166";ctx.shadowBlur=16;
+        ctx.beginPath();ctx.moveTo(sun.x+40,300);ctx.lineTo(860,300);ctx.stroke();ctx.restore();
+        const mid=c.phase===0?moon:earth,last=c.phase===0?earth:moon;
+        const okOrder=c.phase===0?(sun.x<moon.x&&moon.x<earth.x):(sun.x<earth.x&&earth.x<moon.x);
+        if(okOrder&&sun.x<mid.x&&mid.x<last.x){
+          // 影子动画
+          ctx.save();ctx.fillStyle="rgba(0,0,10,.8)";
+          ctx.beginPath();ctx.moveTo(mid.x,300-mid.r);ctx.lineTo(last.x,300-last.r*0.7);
+          ctx.lineTo(last.x,300+last.r*0.7);ctx.lineTo(mid.x,300+mid.r);ctx.closePath();ctx.fill();ctx.restore();
+          emoji(c.phase===0?"🌚":"🌑",last.x,last.y-46,30);
+          label(c.phase===0?"日食发生！":"月食发生！",W/2,110,20,"#ffd166");
+          c.anim+=1;
+          if(c.anim>70&&!c.doneFlags[c.phase]){
+            c.doneFlags[c.phase]=true;sndOK();
+            if(c.phase===0){c.phase=1;c.anim=0;toast("🌑 日食完成！接着摆出月食：让【地球】站到中间");scrambleBodies();}
+            else {c.phase=2;checkWin();}
+          }
+        }else if(aligned){label("顺序不对哦～想想谁挡住谁？",W/2,110,15,"#ff9a9a");c.anim=0;}
+        else c.anim=0;
+      }else c.anim=0;
+      for(const b of sc.bodies){
+        glowCircle(b.x,b.y,b.r+22,b.id==="sun"?"rgba(255,200,80,.7)":"rgba(140,170,255,.3)",1);
+        emoji(b.e,b.x,b.y,b.r*1.7);
+        label(b.id==="sun"?"太阳":b.id==="moon"?"月球":"地球",b.x,b.y+b.r+16,12,"#bcd");
+      }
+      break;}
+    case "fish":{
+      drawWater(t);
+      // 瞄准虚线（直线，不偏折）
+      if(!sc.won){
+        const s=sc.src;
+        ctx.save();ctx.setLineDash([8,8]);ctx.strokeStyle="rgba(255,255,255,.5)";ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(s.x,s.y);
+        ctx.lineTo(s.x+Math.cos(s.a*DEG)*900,s.y+Math.sin(s.a*DEG)*900);
+        ctx.stroke();ctx.setLineDash([]);ctx.restore();
+        label("瞄准线（光进水会向下偏折！）",s.x+150,s.y-22,12,"#cfe0ff");
+      }
+      for(const f of sc.fishes){
+        if(f.caught){if(f.jump>0){f.jump--;emoji("🐟",f.rx,f.ry-f.jump*2.2,50);}
+          else emoji("🫧",f.rx,f.ry,30,0.6);continue;}
+        emoji("🐟",f.gx,f.gy,46);                       // 看到的鱼（亮）
+        glowCircle(f.gx,f.gy,46,"rgba(160,230,255,.4)",1);
+        emoji("🐟",f.rx,f.ry,46,0.3);                    // 真实的鱼（暗淡）
+        label("看到的鱼",f.gx,f.gy-38,11,"#9fd8ff");
+      }
+      drawSrc(t);
+      break;}
+    case "wheel":{
+      const w=c.wheel;
+      // 门
+      drawTarget(sc.targets[0],t);
+      // 转盘
+      ctx.save();ctx.translate(w.x,w.y);ctx.rotate(w.ang);
+      for(let i=0;i<3;i++){
+        ctx.beginPath();ctx.moveTo(0,0);
+        ctx.arc(0,0,w.r,i*2.094,(i+1)*2.094);ctx.closePath();
+        ctx.fillStyle=["#ff5a5a","#5aff8a","#59b0ff"][i];
+        ctx.globalAlpha=w.speed>10?0.9:0.85;ctx.fill();
+      }
+      ctx.restore();
+      if(w.speed>10){ // 高速旋转→合成白光
+        glowCircle(w.x,w.y,w.r+30,"rgba(255,255,240,.85)",1);
+        sc.beamOn=true;
+      }else sc.beamOn=false;
+      // 速度条
+      ctx.save();ctx.fillStyle="#223";ctx.fillRect(w.x-80,w.y+w.r+24,160,14);
+      ctx.fillStyle=w.speed>10?"#fff3a0":"#5aa8ff";
+      ctx.fillRect(w.x-80,w.y+w.r+24,clamp(w.speed/14,0,1)*160,14);
+      ctx.strokeStyle="#567";ctx.strokeRect(w.x-80,w.y+w.r+24,160,14);ctx.restore();
+      label("连续点击转盘加速！",w.x,w.y+w.r+52,14,"#ffe9b0");
+      break;}
+    case "finale":{
+      drawWater(t);
+      // 光源选择
+      const sun=c.sun,moon=c.moon;
+      glowCircle(sun.x,sun.y,60,c.sunOn?"rgba(255,210,100,.9)":"rgba(255,210,100,.3)",1);
+      emoji("🌞",sun.x,sun.y,54);label("点我",sun.x,sun.y+48,12,"#ffd166");
+      emoji("🌕",moon.x,moon.y,44,0.85);label("点我？",moon.x,moon.y+44,12,"#9fb4e8");
+      if(c.sunOn)sc.src={x:sun.x+30,y:sun.y,a:sc.lv.data.srcA};
+      else label("第一步：谁才是真正的光源？",W/2,34,16,"#ffe9b0");
+      break;}
+    case "sandbox":
+      drawWater(t);
+      label("🧪 自由实验室：随便玩！拖光源、转棱镜、摆镜子、换材料",W/2,34,15,"#bfe3ff");
+      break;
+  }
+}
+function drawScene(t){
+  const sc=SC;if(!sc)return;
+  drawBG(t);
+  drawKind(t);
+  // 通用器件
+  for(const b of sc.boards)drawBoard(b,sc.hiId===b.id);
+  for(const s of sc.slots)drawSlotFrame(s,sc.hiId===s.id);
+  for(const s of sc.slots)if(s.mat)drawPlate({mat:s.mat,x:s.x,y:s.y,w:s.w,h:s.h});
+  for(const p of sc.palette)if(!p.used)drawPlate({mat:p.mat,x:p.x,y:p.y,w:44,h:64},true);
+  for(const wl of sc.walls){
+    ctx.save();ctx.fillStyle="#2c3763";ctx.strokeStyle="#4a5b95";ctx.lineWidth=3;
+    const wx=Math.min(wl.x1,wl.x2)-14,wy=Math.min(wl.y1,wl.y2);
+    const ww=Math.abs(wl.x2-wl.x1)+28,wh=Math.abs(wl.y2-wl.y1)||600;
+    ctx.fillRect(wl.x1-14,Math.min(wl.y1,wl.y2),28,Math.abs(wl.y2-wl.y1));
+    ctx.strokeRect(wl.x1-14,Math.min(wl.y1,wl.y2),28,Math.abs(wl.y2-wl.y1));
+    ctx.restore();label("高墙",wl.x1,Math.min(wl.y1,wl.y2)-16,13,"#8aa5d8");}
+  for(const m of sc.mirrors)drawMirror(m,sc.hiId===m.id);
+  for(const pr of sc.prisms)drawPrism(pr,t,sc.hiId==="prism");
+  for(const e of sc.eyes)drawEye(e,t,!!e.friendly);
+  for(const tg of sc.targets)if(tg.icon!=="🚪"||sc.kind==="wheel")drawTarget(tg,t);
+  drawShadows();
+  // 光束
+  const paths=traceAll(sc);
+  drawBeamPaths(paths);
+  if(["boards","matslot","mirrors","periscope","prismcrystal","finale","sandbox"].includes(sc.kind))
+    drawSrc(t);
+  // 眼睛命中反馈
+  if(sc.eyeHit){
+    label("⚠️ 激光笔的光不能照射眼睛！",W/2,H-58,18,"#ff7070");
+  }
+  sc.lastPaths=paths;
+}
+
+/* ================= 交互（鼠标+触屏） ================= */
+function evPos(e){
+  const r=cv.getBoundingClientRect();
+  return {x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H};
+}
+function segDist(px,py,m){
+  const e=mirrorEnds(m);
+  const dx=e.x2-e.x1,dy=e.y2-e.y1,L2=dx*dx+dy*dy;
+  let u=((px-e.x1)*dx+(py-e.y1)*dy)/L2;u=clamp(u,0,1);
+  return dist(px,py,e.x1+u*dx,e.y1+u*dy);
+}
+function countFail(){
+  const id=SC.lv.id;
+  SC.fails++;SAVE.fails[id]=SC.fails;save();
+  if(SC.fails>=5)$("btnDemo").disabled=false;
+  updateInfo();
+}
+/* 命中半径随画布缩放：手机小屏放大触控命中区（至少约24 CSS px） */
+function hitR(base){try{const r=cv.getBoundingClientRect();const s=r.width/W;
+  return Math.max(base,24/Math.max(0.2,s||1));}catch(e){return base;}}
+/* 摆放容差按画布缩放：小屏放大到约 18 CSS px 等效 */
+function cssTol(base){try{const r=cv.getBoundingClientRect();const s=r.width/W;
+  return Math.max(base,18/Math.max(0.2,s||1));}catch(e){return base;}}
+/* 拖拽被意外中断时归还材料，防止材料丢失卡关 */
+function cancelDrag(sc){
+  const d=sc.drag;if(!d)return;
+  if(d.type==="plate"){if(d.from)d.from.used=false;}
+  else if(d.type==="plateOut"){
+    if(d.slot&&!d.slot.mat)d.slot.mat=d.mat;
+    else{const pl=sc.palette.find(x=>x.mat===d.mat);if(pl)pl.used=false;}
+  }
+  sc.drag=null;sc.dragPid=null;
+}
+cv.addEventListener("pointerdown",e=>{
+  e.preventDefault();if(!SC||SC.won)return;
+  const p=evPos(e),sc=SC,c=sc.custom;
+  if(sc.demoQ)return;                        // 光路演示期间锁定操作
+  if(sc.drag&&sc.dragPid!=null&&e.pointerId!==sc.dragPid)return; // 多指冲突：忽略非主指针
+  cancelDrag(sc);                            // 上次手势异常中断：先归还材料
+  try{cv.setPointerCapture(e.pointerId);}catch(err){}
+  sc.dragPid=e.pointerId;
+  // 1) 旋转把手
+  if(sc.src&&sc.src.handle&&dist(p.x,p.y,sc.src.handle.x,sc.src.handle.y)<hitR(22)&&sc.src.rotatable&&!sc.src.hidden)
+    {sc.drag={type:"rotSrc"};return;}
+  if(sc.src&&sc.src.rotOnly&&sc.src.handle&&dist(p.x,p.y,sc.src.handle.x,sc.src.handle.y)<hitR(22))
+    {sc.drag={type:"rotSrc"};return;}
+  for(const pr of sc.prisms)
+    if(pr.handle&&dist(p.x,p.y,pr.handle.x,pr.handle.y)<hitR(22)){sc.drag={type:"rotPrism",pr};return;}
+  for(const m of sc.mirrors)
+    if(!m.fixed&&m.handle&&dist(p.x,p.y,m.handle.x,m.handle.y)<hitR(22)){sc.drag={type:"rotMir",m};return;}
+  // 2) 各玩法的点击目标
+  if(sc.kind==="findsrc"){
+    for(const o of sc.objects)if(dist(p.x,p.y,o.x,o.y)<48){
+      if(o.src){if(!o.found){o.found=true;sndOK();toast("🎉 "+o.msg);}}
+      else{o.shake=20;sndNo();toast("🙅 "+o.msg);countFail();}
+      checkWin();return;}
+    return;}
+  if(sc.kind==="darkroom"){
+    const door=c.door;
+    if(door.reveal>0.6&&dist(p.x,p.y,door.x,door.y)<60){door.open=true;sndOK();checkWin();return;}
+    if(dist(p.x,p.y,c.lamp.x,c.lamp.y)<56){sc.drag={type:"lamp"};return;}
+    return;}
+  if(sc.kind==="eyereveal"){
+    if(c.lit)for(const s of c.stars)
+      if(s.vis>0.8&&!s.got&&dist(p.x,p.y,s.x,s.y)<40){s.got=true;sndPop();checkWin();return;}
+    return;}
+  if(sc.kind==="bellcorner"){
+    if(dist(p.x,p.y,c.torch.x,c.torch.y)<52){
+      c.tried=true;c.beamAnim=50;sndNo();
+      toast("光沿直线传播，拐不了弯，被墙挡住了！");countFail();return;}
+    if(dist(p.x,p.y,c.bell.x,c.bell.y)<52){
+      if(c.ringing)return;
+      c.ringing=true;c.ringT=0;sndPop();
+      toast("🔔 叮铃铃——声波绕过拐角啦！");return;}
+    return;}
+  if(sc.kind==="eclipse"){
+    for(const b of sc.bodies)if(dist(p.x,p.y,b.x,b.y)<b.r+18){sc.drag={type:"body",b};return;}
+    return;}
+  if(sc.kind==="wheel"){
+    if(dist(p.x,p.y,c.wheel.x,c.wheel.y)<c.wheel.r+14){
+      c.wheel.speed=Math.min(16,c.wheel.speed+3.4);sndPop();return;}
+    return;}
+  if(sc.kind==="finale"&&!c.sunOn){
+    if(dist(p.x,p.y,c.sun.x,c.sun.y)<50){c.sunOn=true;sndOK();
+      toast("☀️ 对！太阳自己发光，是真正的光源！");return;}
+    if(dist(p.x,p.y,c.moon.x,c.moon.y)<46){sndNo();countFail();
+      toast("🌙 月亮只是反射太阳光，不是光源哦！");return;}
+    return;}
+  // 3) 材料板：从调色板拖出 / 从槽位移除
+  for(const pl of sc.palette)
+    if(!pl.used&&Math.abs(p.x-pl.x)<hitR(34)&&Math.abs(p.y-pl.y)<hitR(46)){
+      sc.drag={type:"plate",mat:pl.mat,from:pl,px:p.x,py:p.y};return;}
+  for(const s of sc.slots)
+    if(s.mat&&Math.abs(p.x-s.x)<hitR(s.w/2+10)&&Math.abs(p.y-s.y)<s.h/2+14){
+      sc.drag={type:"plateOut",slot:s,mat:s.mat,px:p.x,py:p.y};s.mat=null;return;}
+  // 4) 器件本体
+  if(sc.src&&sc.src.moveAxis&&dist(p.x,p.y,sc.src.x,sc.src.y)<hitR(36)){sc.drag={type:"src"};return;}
+  for(const pr of sc.prisms)if(pr.dragMove&&dist(p.x,p.y,pr.x,pr.y)<hitR(pr.size+10)){sc.drag={type:"prismMove",pr};return;}
+  for(const b of sc.boards)
+    if(Math.abs(p.x-b.x)<hitR(26)&&Math.abs(p.y-b.y)<b.h/2+14){sc.drag={type:"board",b};return;}
+  for(const m of sc.mirrors)
+    if(segDist(p.x,p.y,m)<hitR(20)){sc.drag={type:"mirror",m};return;}
+});
+cv.addEventListener("pointermove",e=>{
+  if(!SC||!SC.drag)return;e.preventDefault();
+  if(SC.dragPid!=null&&e.pointerId!==undefined&&e.pointerId!==SC.dragPid)return;
+  const p=evPos(e),d=SC.drag;
+  if(d.type==="rotSrc"){const s=SC.src;
+    s.a=clamp(Math.atan2(p.y-s.y,p.x-s.x)/DEG,s.amin??-180,s.amax??180);}
+  else if(d.type==="rotPrism"){d.pr.rot=Math.atan2(p.y-d.pr.y,p.x-d.pr.x)/DEG+90;}
+  else if(d.type==="rotMir"){d.m.a=Math.atan2(p.y-d.m.y,p.x-d.m.x)/DEG;}
+  else if(d.type==="lamp"){SC.custom.lamp.x=clamp(p.x,30,W-30);SC.custom.lamp.y=clamp(p.y,30,H-30);}
+  else if(d.type==="body"){d.b.x=clamp(p.x,70,W-70);d.b.y=clamp(p.y,240,360);}
+  else if(d.type==="src"){const s=SC.src;
+    if(s.moveAxis==="x")s.x=clamp(p.x,60,W-60);
+    else if(s.moveAxis==="xy"){s.x=clamp(p.x,40,W-40);s.y=clamp(p.y,40,H-40);}}
+  else if(d.type==="prismMove"){d.pr.x=clamp(p.x,60,W-60);d.pr.y=clamp(p.y,60,H-60);}
+  else if(d.type==="board"){d.b.y=clamp(p.y,70,H-70);}
+  else if(d.type==="mirror"){d.m.x=clamp(p.x,40,W-40);d.m.y=clamp(p.y,40,H-40);}
+  else if(d.type==="plate"||d.type==="plateOut"){d.px=p.x;d.py=p.y;}
+});
+cv.addEventListener("pointerup",e=>{
+  if(!SC||!SC.drag)return;
+  if(SC.dragPid!=null&&e.pointerId!==undefined&&e.pointerId!==SC.dragPid)return;
+  const d=SC.drag,p=evPos(e);
+  if(d.type==="plate"){
+    let ok=false;
+    for(const s of SC.slots)if(Math.abs(p.x-s.x)<60&&Math.abs(p.y-s.y)<s.h/2+30){
+      if(!s.mat){s.mat=d.mat;d.from.used=true;ok=true;sndPop();}
+      else toast("这个槽位已经有材料啦，先把里面的拖出来～");break;}
+    if(!ok)toast("把材料拖到虚线框里哦");
+  }else if(d.type==="plateOut"){
+    let ok=false;
+    for(const s of SC.slots)if(Math.abs(p.x-s.x)<60&&Math.abs(p.y-s.y)<s.h/2+30){
+      if(!s.mat){s.mat=d.mat;ok=true;break;}}
+    if(!ok){ // 放回调色板
+      const pl=SC.palette.find(x=>x.mat===d.mat);if(pl)pl.used=false;}
+  }
+  SC.drag=null;SC.dragPid=null;
+});
+cv.addEventListener("pointercancel",e=>{
+  if(!SC)return;
+  if(SC.dragPid!=null&&e.pointerId!==undefined&&e.pointerId!==SC.dragPid)return;
+  cancelDrag(SC);
+});
+/* ================= 发射 / 胜负判定 ================= */
+function pressFire(){
+  const sc=SC;if(!sc||sc.won)return;
+  const c=sc.custom;
+  if(sc.demoQ){toast("🎬 演示进行中，先看光怎么走～");return;}
+  if(sc.kind==="finale"&&!c.sunOn){toast("先点击真正的光源（谁会自己发光？）");return;}
+  if(sc.kind==="fish"){
+    if(c.shots<=0){toast("鱼叉用完啦！再来一轮～");c.shots=c.shotsMax;
+      for(const f of sc.fishes){f.caught=false;f.jump=0;}countFail();return;}
+    c.shots--;sc.beamOn=true;sc.flash=45;sc.attempts++;
+    traceAll(sc);
+    let hit=false;
+    for(const f of sc.fishes)if(f.justHit&&!f.caught){f.caught=true;f.jump=40;hit=true;sndOK();
+      toast("🎣 叉中啦！真实的鱼在看到的下方～");}
+    if(!hit){sndNo();countFail();
+      if(c.shotsMax<90&&c.shots<=0){toast("机会用完，鱼群受惊游走了！重新开始本关");c.shots=c.shotsMax;
+        for(const f of sc.fishes){f.caught=false;f.jump=0;}}
+      else toast("没叉中……记住：光进水会向下偏折，瞄低一点！");}
+    updateInfo();checkWin();return;
+  }
+  sc.beamOn=!sc.beamOn;
+  $("btnFire").textContent=sc.beamOn?"🛑 收回光束":"🔦 发射光束";
+  if(sc.beamOn){
+    sc.eyeWarned=false;sc.attempts++;
+    traceAll(sc);
+    afterTraceCheck();
+  }
+}
+function afterTraceCheck(){
+  const sc=SC;
+  if(sc.eyeHit&&!sc.eyeWarned&&!sc.eyeHitFriendly){
+    sc.eyeWarned=true;sndNo();countFail();
+    toast("⚠️ 危险！激光笔的光不能照射眼睛！快调整光路");
+  }
+  // 是否命中任何目标
+  const anyGlow=sc.targets.some(t=>t.glow>0.05);
+  if(sc.beamOn&&!anyGlow&&!sc.eyeHit&&["boards","matslot","mirrors","periscope","prismcrystal","finale"].includes(sc.kind)){
+    countFail();
+    toast("光束没有到达目标……观察它停在了哪里？");
+  }
+  checkWin();
+}
+function checkWin(){
+  const sc=SC;if(!sc||sc.won)return;
+  const c=sc.custom;let win=false;
+  switch(sc.kind){
+    case "findsrc":win=sc.objects.filter(o=>o.src).every(o=>o.found);break;
+    case "darkroom":win=!!c.door.open;break;
+    case "eyereveal":win=c.lit&&c.stars.every(s=>s.got);break;
+    case "bellcorner":win=!!c.bird.awake;break;
+    case "eclipse":win=c.phase>=2;break;
+    case "fish":win=sc.fishes.every(f=>f.caught);break;
+    case "wheel":win=!!c.doorOpen;break;
+    default:
+      win=sc.beamOn&&!sc.eyeHit&&sc.targets.length>0&&sc.targets.every(t=>t.lit);
+      if(sc.kind==="finale")win=win&&c.sunOn;
+  }
+  if(win)winLevel();
+}
+/* 每帧推进：目标点亮锁存 / 转盘 / 眼睛显现 / 演示步进 */
+function tickLogic(){
+  const sc=SC;if(!sc)return;
+  const c=sc.custom;sc.t++;
+  for(const tg of sc.targets)if(tg.glow>=(tg.need||0.5))tg.lit=true;
+  if(sc.kind==="eyereveal"){
+    if(sc.beamOn&&sc.eyeHit&&!c.lit){c.lit=true;sndOK();
+      toast("👁️ 光进入眼睛了！你看见了隐藏的星星！");}
+    for(const s of c.stars)if(c.lit&&s.vis<1)s.vis=Math.min(1,s.vis+0.05);
+  }
+  if(sc.kind==="wheel"){
+    c.wheel.speed*=0.985;c.wheel.ang+=c.wheel.speed*0.03;
+    if(sc.beamOn&&sc.targets[0].lit)c.doorOpen=true;
+    checkWin();
+  }
+  if(sc.kind==="bellcorner"&&c.ringing){
+    c.ringT++;
+    if(c.ringT%10===0)c.rings.push({x:c.bell.x,y:c.bell.y,r:10,a:1});
+    for(const r of c.rings){r.r+=6;r.a=1-r.r/560;
+      // 声波绕墙：到达小鸟
+      if(dist(r.x+r.r*0.7,r.y,c.bird.x,c.bird.y)<r.r&&!c.bird.awake&&r.r>500){c.bird.awake=true;}}
+    c.rings=c.rings.filter(r=>r.a>0);
+    if(c.ringT>95){c.ringing=false;if(!c.bird.awake)c.bird.awake=true;}
+    if(c.bird.awake){sndOKOnce();checkWin();}
+  }
+  if(sc.flash>0){sc.flash--;if(sc.flash===0)sc.beamOn=false;}
+  if(["boards","matslot","mirrors","periscope","prismcrystal","finale","sandbox"].includes(sc.kind)&&sc.beamOn){
+    if(sc.eyeHit&&!sc.eyeWarned&&!sc.eyeHitFriendly){sc.eyeWarned=true;sndNo();countFail();
+      toast("⚠️ 危险！激光笔的光不能照射眼睛！");}
+    checkWin();
+  }
+  if(sc.kind==="prismcrystal"&&sc.beamOn){
+    const ts=sc.targets;
+    if(c.stage===0&&ts[0].lit){c.stage=1;
+      if(ts.length>1)toast("💎 红水晶点亮！现在把蓝光转向蓝水晶～");}
+  }
+  runDemoTick();
+}
+let sndOKPlayed=false;
+function sndOKOnce(){if(!sndOKPlayed){sndOKPlayed=true;sndOK();setTimeout(()=>sndOKPlayed=false,1500);}}
+function drawEyeBlink(){}
+function scrambleBodies(){
+  const m=SC.bodies[1],e2=SC.bodies[2];
+  m.y=210;m.x=420;e2.y=390;e2.x=640;
+}
+
+/* ================= 光路演示（看答案） ================= */
+function solveFishAim(f){
+  const sc=SC,s=sc.src,wy=sc.water;
+  for(let a=16;a<=164;a+=1){
+    const ar=a*DEG,sa=Math.sin(ar);if(sa<0.25)continue;
+    const run=(wy-s.y)*Math.cos(ar)/sa;
+    for(let x=60;x<=840;x+=4){
+      const ex=x+run;
+      const dev=a-90,d2=90+Math.sign(dev)*Math.max(0,Math.abs(dev)-15);
+      const dx=Math.cos(d2*DEG),dy=Math.sin(d2*DEG);
+      const vx=f.rx-ex,vy=f.ry-wy,t=vx*dx+vy*dy;
+      if(t>10&&Math.abs(vx*dy-vy*dx)<24)return {x,a};
+    }
+  }
+  return null;
+}
+function startDemo(){
+  const sc=SC;if(!sc||sc.won||sc.demoQ)return;
+  sc.demoUsed=true;const c=sc.custom,S=[];
+  const P=(fn,waitFor)=>S.push({fn,waitFor});
+  switch(sc.kind){
+    case "findsrc":
+      sc.objects.filter(o=>o.src).forEach(o=>P(()=>{o.found=true;sndPop();checkWin();}));break;
+    case "darkroom":
+      P(()=>{c.lamp.x=560;c.lamp.y=430;});
+      P(()=>{c.lamp.x=735;c.lamp.y=430;});
+      P(()=>{c.door.open=true;sndOK();checkWin();},()=>c.door.reveal>0.6);break;
+    case "eyereveal":
+      P(()=>{const e=c.eye;sc.src.a=Math.atan2(e.y-sc.src.y,e.x-sc.src.x)/DEG;sc.beamOn=true;});
+      c.stars.forEach(s=>P(()=>{s.got=true;sndPop();checkWin();},()=>s.vis>0.8));break;
+    case "bellcorner":
+      P(()=>{c.ringing=true;c.ringT=0;});break;
+    case "boards":
+      sc.boards.forEach(b=>P(()=>{b.y=b.sol;sndPop();}));
+      P(()=>{sc.beamOn=true;$("btnFire").textContent="🛑 收回光束";});break;
+    case "matslot":
+      P(()=>{sc.slots[0].mat="glass";sc.palette.find(p=>p.mat==="glass").used=true;sndPop();});
+      if(sc.slots[1])P(()=>{sc.slots[1].mat="frost";sc.palette.find(p=>p.mat==="frost").used=true;sndPop();});
+      P(()=>{sc.beamOn=true;$("btnFire").textContent="🛑 收回光束";});break;
+    case "eclipse":
+      P(()=>{const[su,mo,ea]=sc.bodies;su.x=180;mo.x=450;ea.x=720;
+        sc.bodies.forEach(b=>b.y=300);});
+      P(()=>{const[su,mo,ea]=sc.bodies;su.x=180;ea.x=450;mo.x=720;
+        sc.bodies.forEach(b=>b.y=300);},()=>c.phase===1);break;
+    case "fish":
+      sc.fishes.forEach(f=>P(()=>{
+        const sol=solveFishAim(f);
+        if(sol){sc.src.x=sol.x;sc.src.a=sol.a;}
+        sc.beamOn=true;traceAll(sc);
+        for(const ff of sc.fishes)if(ff.justHit&&!ff.caught){ff.caught=true;ff.jump=40;sndPop();}
+        checkWin();
+      },()=>!f.caught));break;
+    case "prismcrystal":
+      P(()=>{sc.prisms[0].rot=sc.prisms[0].sol;sc.beamOn=true;$("btnFire").textContent="🛑 收回光束";});
+      if(sc.targets[1])P(()=>{sc.prisms[0].rot=sc.prisms[0].sol2;},()=>sc.targets[0].lit);break;
+    case "wheel":
+      P(()=>{c.wheel.speed=15;});P(()=>{c.wheel.speed=15;});P(()=>{c.wheel.speed=15;});break;
+    case "mirrors":case "periscope":
+      sc.mirrors.forEach(m=>{if(m.sol)P(()=>{m.x=m.sol.x;m.y=m.sol.y;m.a=m.sol.a;sndPop();});});
+      P(()=>{sc.beamOn=true;$("btnFire").textContent="🛑 收回光束";});break;
+    case "finale":
+      P(()=>{c.sunOn=true;sndPop();});
+      sc.boards.forEach(b=>P(()=>{b.y=b.sol;sndPop();}));
+      P(()=>{sc.slots[0].mat="glass";sc.palette.find(p=>p.mat==="glass").used=true;sndPop();});
+      P(()=>{sc.prisms[0].rot=sc.prisms[0].sol;sndPop();});
+      sc.mirrors.forEach(m=>{if(m.sol)P(()=>{m.x=m.sol.x;m.y=m.sol.y;m.a=m.sol.a;sndPop();});});
+      P(()=>{sc.beamOn=true;$("btnFire").textContent="🛑 收回光束";});break;
+  }
+  sc.demoQ=S;sc.demoIdx=0;sc.demoT=10;
+  toast("🎬 看仔细咯——光路演示开始！");
+}
+function runDemoTick(){
+  const sc=SC;if(!sc||!sc.demoQ)return;
+  const step=sc.demoQ[sc.demoIdx];
+  if(!step){sc.demoQ=null;return;}
+  if(step.waitFor&&!step.waitFor())return;
+  if(sc.demoT>0){sc.demoT--;return;}
+  step.fn();sc.demoIdx++;sc.demoT=45;
+}
+/* ================= 提示系统 ================= */
+function pressHint(){
+  const sc=SC;if(!sc||sc.won)return;
+  const lv=sc.lv;
+  const nl=Math.min(3,sc.hintLevel+1);sc.hintLevel=nl;
+  if(nl>=2)sc.hiId={boards:"b0",matslot:"slot0",mirrors:"m0",periscope:"m0",
+    prismcrystal:"prism",finale:"prism",fish:"src"}[sc.kind]||null;
+  if(nl>=3)applyFirstStep();
+  showModal(`<h2>💡 提示 ${nl} / 3</h2>
+    <div class="hintTag">${nl===1?"方向提示":nl===2?"关键器件已高亮✨":"演示第一步"}</div>
+    <p>${lv.hints[nl-1]}</p>
+    <button class="optBtn" onclick="hideModal()">知道啦！</button>`);
+  updateInfo();
+}
+function applyFirstStep(){
+  const sc=SC,c=sc.custom;
+  switch(sc.kind){
+    case "boards":sc.boards[0].y=sc.boards[0].sol;break;
+    case "matslot":if(!sc.slots[0].mat){sc.slots[0].mat="glass";
+      const p=sc.palette.find(x=>x.mat==="glass");if(p)p.used=true;}break;
+    case "mirrors":case "periscope":{const m=sc.mirrors[0];
+      m.x=m.sol.x;m.y=m.sol.y;m.a=m.sol.a;break;}
+    case "prismcrystal":sc.prisms[0].rot=sc.prisms[0].sol;break;
+    case "finale":c.sunOn=true;break;
+    case "fish":{const f=sc.fishes.find(f=>!f.caught);
+      if(f){const s=solveFishAim(f);if(s){sc.src.x=s.x;sc.src.a=s.a;}}break;}
+    case "eyereveal":{const e=c.eye;
+      sc.src.a=Math.atan2(e.y-sc.src.y,e.x-sc.src.x)/DEG;break;}
+    case "darkroom":c.lamp.x=640;c.lamp.y=430;break;
+    case "eclipse":{const[su,mo,ea]=sc.bodies;su.x=180;su.y=300;
+      if(c.phase===0){mo.x=450;mo.y=300;}else{ea.x=450;ea.y=300;}break;}
+  }
+}
+/* ================= 过关与结算 ================= */
+/* 星级：3星=不用提示/演示 + 发射≤2次 + 预测答对；2星=用1级提示或发射≤4次；其余1星 */
+function calcStars(sc){
+  const att=sc.attempts||0;
+  if(sc.hintLevel===0&&!sc.demoUsed&&att<=2&&sc.predictOK===true)return 3;
+  if((sc.hintLevel===1&&!sc.demoUsed)||att<=4)return 2;
+  return 1;
+}
+function winLevel(){
+  const sc=SC;sc.won=true;sndOK();
+  const lv=sc.lv;
+  if(lv.bossQ&&!sc.bossOK){showBossQuiz();return;}   // Boss关：答对综合小问才点亮灯塔
+  finalizeWin();
+}
+function showBossQuiz(feedback){
+  const sc=SC,lv=sc.lv,q=lv.bossQ;
+  const btns=q.o.map((t,i)=>`<button class="optBtn" id="bossOpt${i}">${t}</button>`).join("");
+  showModal(`<h2>🏮 ${WORLDS[lv.w].tower}的最后考验</h2>
+    <p style="color:#9fd0ff;font-size:13px">✨ 闪闪：点亮灯塔之前，回答我一个问题！</p>
+    <p><b>${q.q}</b></p>
+    ${feedback?`<p style="color:#ff9a9a;font-size:13px">${feedback}</p>`:""}
+    ${btns}`);
+  q.o.forEach((_,i)=>{$("bossOpt"+i).onclick=()=>answerBoss(i);});
+}
+function answerBoss(i){
+  const sc=SC,q=sc.lv.bossQ;
+  if(i===q.a){sc.bossOK=true;sndOK();finalizeWin();}
+  else{sndNo();showBossQuiz("🙅 再想想～"+q.o.filter((_,j)=>j!==q.a)[0]+" 不太对哦。答错不扣分，再试一次！");}
+}
+function finalizeWin(){
+  const sc=SC,lv=sc.lv;
+  const stars=calcStars(sc);
+  SAVE.done[lv.id]=true;
+  SAVE.stars[lv.id]=Math.max(SAVE.stars[lv.id]||0,stars);
+  SAVE.cards[lv.id]=true;SAVE.fails[lv.id]=0;save();
+  const allDone=LEVELS.every(l=>SAVE.done[l.id]);
+  if(allDone){SAVE.allDone=true;save();}
+  const next=LEVELS[LEVELS.indexOf(lv)+1];
+  const starStr="⭐".repeat(stars)+"☆".repeat(3-stars);
+  showModal(`<h2>🎉 ${lv.k===2?WORLDS[lv.w].tower+"重燃！":"通关成功！"}</h2>
+    <div class="stars">${starStr}</div>
+    <p style="color:#bfe3ff;font-size:13.5px;line-height:1.8;text-align:left">✨ <b>闪闪：</b>${lv.storyOut||""}</p>
+    <div class="cardShow"><span class="scrollTag">📜 获得光之卷轴</span><div class="ji">${lv.card.i}</div>
+      <h4>${lv.card.t}</h4><p>${lv.card.x}</p></div>
+    ${allDone?`<button class="optBtn right" onclick="hideModal();showEnding()">☀️ 重燃太阳棱镜！</button>`:""}
+    <button class="optBtn ${allDone?"":"right"}" onclick="hideModal();${next?`startLevel('${next.id}')`:"backToMap()"}">${next?"▶️ 下一关":"🗺️ 回地图"}</button>
+    <button class="optBtn" onclick="hideModal();backToMap()">🗺️ 回地图</button>`);
+}
+/* ================= 结局 ================= */
+function showEnding(){
+  $("scrGame").classList.add("hidden");$("scrMap").classList.add("hidden");
+  const recap=[
+    "W1 <b>光源</b>：自己发光且正在发光的才是光源；光进入眼睛，我们才能看见。",
+    "W2 <b>直线传播</b>：光在同种均匀介质中沿直线传播。",
+    "W3 <b>阻碍与影子</b>：透明/半透明/不透明；影子是光被挡住形成的；日食月食是光直线传播的证据。",
+    "W4 <b>折射</b>：光斜射入水会偏折，垂直入射不偏折；叉鱼要瞄下方。",
+    "W5 <b>色散</b>：白光由多种色光组成；红绿蓝三原色可合成白光。",
+    "W6 <b>反射</b>：反射角=入射角；反射光也沿直线传播。",
+    "W7 <b>潜望镜</b>：两面 45° 平面镜两次反射，就能看到墙后的世界。",
+  ];
+  $("endRecap").innerHTML="<ul>"+recap.map(r=>`<li>${r}</li>`).join("")+"</ul>";
+  $("scrEnding").classList.remove("hidden");sndOK();
+}
+/* ================= 弹窗工具 ================= */
+function showModal(html){$("modalLayer").innerHTML=`<div class="modal">${html}</div>`;$("modalLayer").classList.add("show");}
+function hideModal(){$("modalLayer").classList.remove("show");}
+/* ================= 关卡启动 ================= */
+function startLevel(id){
+  const lv=LEVEL_BY_ID[id];if(!lv)return;
+  SC=buildScene(lv);
+  $("scrMap").classList.add("hidden");$("scrJournal").classList.add("hidden");
+  $("scrPrologue").classList.add("hidden");$("scrEnding").classList.add("hidden");
+  $("scrGame").classList.remove("hidden");
+  const wd=WORLDS[lv.w];
+  $("topTitle").textContent=`${wd.icon} ${lv.w+1}-${lv.k+1} ${lv.name}`;
+  const noFire=["findsrc","darkroom","bellcorner","eclipse","wheel"].includes(lv.kind);
+  $("btnFire").style.display=noFire?"none":"";
+  $("btnFire").textContent=lv.kind==="fish"?"🔱 发射！":"🔦 发射光束";
+  $("btnDemo").disabled=(SAVE.fails[id]||0)<5;
+  $("btnDemo").style.display=lv.kind==="sandbox"?"none":"";
+  $("btnHint").style.display=lv.kind==="sandbox"?"none":"";
+  fitCanvas();updateInfo();
+  if(lv.kind!=="sandbox"){
+    const p=lv.predict;
+    const btns=p.o.map((t,i)=>`<button class="optBtn" id="opt${"ABC"[i]}">${t}</button>`).join("");
+    showModal(`<h2>${wd.tower} · ${lv.name}</h2>
+      ${lv.storyIntro?`<p style="color:#bfe3ff;font-size:13.5px;line-height:1.8;text-align:left">✨ <b>闪闪：</b>${lv.storyIntro}</p>`:""}
+      <p style="font-size:13.5px;color:#dce6ff">📋 任务：${lv.intro}</p>
+      <p style="color:#ffd166">🔮 先预测一下：<br><b>${p.q}</b></p>${btns}`);
+    p.o.forEach((_,i)=>{$("opt"+"ABC"[i]).onclick=()=>answerPredict(i);});
+  }
+}
+function answerPredict(i){
+  const p=SC.lv.predict,ok=i===p.a;
+  SC.predictOK=ok;
+  showModal(`<h2>${ok?"🎯 预测正确！":"🤔 预测偏啦"}</h2><p>${p.why}</p>
+    <p style="font-size:13px;color:#9fb4e8">现在动手验证吧！</p>
+    <button class="optBtn right" onclick="hideModal()">开始实验！</button>`);
+  ok?sndPop():sndNo();
+}
+function updateInfo(){
+  const sc=SC;if(!sc)return;
+  let s="";
+  if(sc.kind==="fish")s=`剩余发射：${sc.custom.shots} 次　🐟 ${sc.fishes.filter(f=>f.caught).length}/${sc.fishes.length}`;
+  else if(sc.fails>0)s=`已尝试 ${sc.fails} 次${sc.fails>=5?"　🎬演示已解锁":""}`;
+  if(sc.hintLevel>0)s+=(s?"　":"")+`💡用过${sc.hintLevel}级提示`;
+  $("levelInfo").textContent=s||"本关一定有解，放心试！";
+}
+function backToMap(){SC=null;$("scrGame").classList.add("hidden");
+  $("scrJournal").classList.add("hidden");$("scrEnding").classList.add("hidden");
+  renderMap();$("scrMap").classList.remove("hidden");}
+
+/* ================= 地图与图鉴 ================= */
+function levelUnlocked(l){
+  if(l.k===0)return l.w===0||!!SAVE.done[LEVELS[l.w*3-1].id]; // 需上一世界最后一关通关
+  return !!SAVE.done[LEVELS[l.w*3+l.k-1].id];
+}
+function renderMap(){
+  const g=$("mapGrid");g.innerHTML="";
+  WORLDS.forEach((wd,w)=>{
+    const lvs=LEVELS.filter(l=>l.w===w);
+    const lit=lvs.every(l=>SAVE.done[l.id]);
+    const any=lvs.some(l=>SAVE.done[l.id]);
+    const unlocked=levelUnlocked(lvs[0]);
+    const card=document.createElement("div");
+    card.className="wcard"+(lit?" lit":"")+(unlocked?"":" locked");
+    const state=lit?'<span class="tstate on">🔥 重燃</span>':(any||unlocked)?'<span class="tstate dim">🕯️ 微光</span>':'<span class="tstate off">🌑 熄灭</span>';
+    card.innerHTML=`<div class="lh">${lit?"🏮":wd.icon}</div>
+      <h3>W${w+1} ${wd.tower}</h3><div class="wsub">${wd.name} · ${wd.sub}</div>
+      <div class="wsub" style="min-height:28px">${wd.blurb}</div>${state}<br>`;
+    if(!unlocked)card.onclick=()=>toast("🌑 这座灯塔还在沉睡……先重燃前一座灯塔吧！");
+    lvs.forEach(l=>{
+      const b=document.createElement("button");
+      const st=SAVE.stars[l.id]||0;
+      b.className="lvbtn"+(SAVE.done[l.id]?" done":"")+(levelUnlocked(l)?"":" lock");
+      b.innerHTML=(l.k===2?"👑":l.k+1)+(SAVE.done[l.id]?"<br>"+"⭐".repeat(st):"");
+      b.title=l.name;
+      b.onclick=(e)=>{e.stopPropagation&&e.stopPropagation();startLevel(l.id);};
+      card.appendChild(b);
+    });
+    g.appendChild(card);
+  });
+  const got=LEVELS.reduce((s,l)=>s+(SAVE.stars[l.id]||0),0),tot=LEVELS.length*3;
+  $("starFill").style.width=(got/tot*100)+"%";
+  $("starTxt").textContent=`⭐ 星光 ${got} / ${tot}`;
+  $("btnSandbox").classList.toggle("hidden",!SAVE.allDone);
+}
+function renderJournal(){
+  const g=$("journalGrid");g.innerHTML="";
+  const n=LEVELS.filter(l=>SAVE.cards[l.id]).length;
+  $("scrollProg").textContent=`收集进度 ${n} / ${LEVELS.length}`;
+  LEVELS.forEach(l=>{
+    const got=SAVE.cards[l.id];
+    const d=document.createElement("div");
+    d.className="jcard"+(got?"":" lock");
+    d.innerHTML=got?`<div class="ji">${l.card.i}</div><h4>${l.card.t}</h4><p>${l.card.x}</p>`
+      :`<div class="ji">❓</div><h4>???</h4><p>通关后解锁</p>`;
+    g.appendChild(d);
+  });
+}
+/* ================= 按钮绑定 ================= */
+$("btnBack").onclick=()=>backToMap();
+$("btnFire").onclick=()=>pressFire();
+$("btnHint").onclick=()=>pressHint();
+$("btnDemo").onclick=()=>startDemo();
+$("btnOpenJournal").onclick=()=>{renderJournal();$("scrMap").classList.add("hidden");$("scrJournal").classList.remove("hidden");};
+$("btnJournalBack").onclick=()=>backToMap();
+$("btnSandbox").onclick=()=>startLevel("sandbox");
+$("btnReset").onclick=()=>{
+  if(confirm("确定要清空全部进度和图鉴吗？")){
+    SAVE={done:{},stars:{},cards:{},fails:{},allDone:false,prologueSeen:false};save();renderMap();toast("进度已重置");}
+};
+$("btnEndMap").onclick=()=>backToMap();
+
+/* ================= 序章 ================= */
+const PRO_PAGES=[
+ {e:"🌑",t:"在很远很远的地方，有一个<b>光之国</b>。国家的中央立着神奇的<b>太阳棱镜</b>，它把光明送进七座灯塔，照亮每一寸土地。"},
+ {e:"🌫️",t:"可是有一天，<b>暗影迷雾</b>悄悄袭来，侵蚀了太阳棱镜……棱镜的光熄灭了，七座灯塔一座接一座地黯淡下去，光之国陷入黑暗。"},
+ {e:"✨",t:"「嗨！我叫<b>闪闪</b>，是光之精灵！」一颗小光点飞到你面前，「你是最后的<b>光之学徒</b>，只有你能逐塔修复，重新点燃太阳棱镜！」"},
+ {e:"🔦",t:"闪闪教你本领：<b>布置光学器件 → 发射光束 → 观察光路 → 调整再试</b>。每关先「预测」，再动手验证——这就是科学家的探究方法！"},
+ {e:"🗺️",t:"一路上你会收集 21 张<b>光之卷轴</b>，点亮七座灯塔。卡关了可以点💡提示，连续失败还能看🎬光路演示。准备好就出发吧！"},
+];
+let proIdx=0;
+function renderPro(){
+  const p=PRO_PAGES[proIdx];
+  $("proEmoji").textContent=p.e;$("proText").innerHTML=p.t;
+  $("proDots").textContent=PRO_PAGES.map((_,i)=>i===proIdx?"●":"○").join(" ");
+  $("btnProNext").textContent=proIdx===PRO_PAGES.length-1?"✨ 出发！":"下一页 ▶";
+}
+function closePrologue(){
+  SAVE.prologueSeen=true;save();
+  $("scrPrologue").classList.add("hidden");backToMap();
+}
+$("btnProNext").onclick=()=>{proIdx++;if(proIdx>=PRO_PAGES.length)closePrologue();else{renderPro();sndPop();}};
+$("btnProSkip").onclick=()=>closePrologue();
+/* sandbox 伪关卡 */
+LEVEL_BY_ID["sandbox"]={id:"sandbox",w:0,k:0,name:"自由实验室",kind:"sandbox",
+  intro:"",predict:null,hints:[],card:{i:"🧪",t:"",x:""},data:{}};
+/* ================= 主循环 ================= */
+function fitCanvas(){
+  const wrap=$("canvasWrap");
+  const aw=wrap.clientWidth-10,ah=wrap.clientHeight-10;
+  const s=Math.max(0.2,Math.min(aw/W,ah/H));
+  cv.style.width=(W*s)+"px";cv.style.height=(H*s)+"px";
+  // devicePixelRatio 高清适配：画布按 dpr 放大，逻辑坐标仍用 W×H
+  const dpr=Math.min(3,(window.devicePixelRatio||1));
+  const bw=Math.round(W*dpr),bh=Math.round(H*dpr);
+  if(cv.width!==bw||cv.height!==bh){cv.width=bw;cv.height=bh;}
+  try{ctx.setTransform(dpr,0,0,dpr,0,0);}catch(e){}
+}
+window.addEventListener("resize",fitCanvas);
+let lastT=0;
+function loop(t){
+  if(SC&&!$("scrGame").classList.contains("hidden")){
+    tickLogic();
+    drawScene(t);
+    if(SC.drag&&(SC.drag.type==="plate"||SC.drag.type==="plateOut"))
+      drawPlate({mat:SC.drag.mat,x:SC.drag.px,y:SC.drag.py,w:44,h:64},true);
+  }
+  requestAnimationFrame(loop);
+}
+renderMap();fitCanvas();
+if(!SAVE.prologueSeen){
+  $("scrMap").classList.add("hidden");
+  $("scrPrologue").classList.remove("hidden");
+  proIdx=0;renderPro();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
